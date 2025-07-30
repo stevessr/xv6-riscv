@@ -1,9 +1,8 @@
-// Demonstrate that moving the "acquire" in iderw after the loop that
-// appends to the idequeue results in a race.
+// 演示将 iderw 中的 "acquire" 移到附加到 idequeue 的循环之后
+// 会导致竞争。
 
-// For this to work, you should also add a spin within iderw's
-// idequeue traversal loop.  Adding the following demonstrated a panic
-// after about 5 runs of stressfs in QEMU on a 2.1GHz CPU:
+// 为了使其工作，您还应该在 iderw 的 idequeue 遍历循环中添加一个自旋。
+// 添加以下内容可以在 QEMU 中以 2.1GHz CPU 运行约 5 次 stressfs 后演示一个 panic：
 //    for (i = 0; i < 40000; i++)
 //      asm volatile("");
 
@@ -23,6 +22,7 @@ main(int argc, char *argv[])
   printf("stressfs starting\n");
   memset(data, 'a', sizeof(data));
 
+  // 创建 4 个子进程
   for(i = 0; i < 4; i++)
     if(fork() > 0)
       break;

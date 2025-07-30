@@ -16,12 +16,13 @@ main(void)
 {
   int pid, wpid;
 
+  // 打开控制台设备文件，如果不存在则创建
   if(open("console", O_RDWR) < 0){
     mknod("console", CONSOLE, 0);
     open("console", O_RDWR);
   }
-  dup(0);  // stdout
-  dup(0);  // stderr
+  dup(0);  // 标准输出
+  dup(0);  // 标准错误
 
   for(;;){
     printf("init: starting sh\n");
@@ -31,23 +32,23 @@ main(void)
       exit(1);
     }
     if(pid == 0){
+      // 子进程执行 shell
       exec("sh", argv);
       printf("init: exec sh failed\n");
       exit(1);
     }
 
     for(;;){
-      // this call to wait() returns if the shell exits,
-      // or if a parentless process exits.
+      // 这个 wait() 调用会在 shell 退出或一个没有父进程的进程退出时返回。
       wpid = wait((int *) 0);
       if(wpid == pid){
-        // the shell exited; restart it.
+        // shell 退出了；重启它。
         break;
       } else if(wpid < 0){
         printf("init: wait returned an error\n");
         exit(1);
       } else {
-        // it was a parentless process; do nothing.
+        // 这是一个没有父进程的进程；什么也不做。
       }
     }
   }

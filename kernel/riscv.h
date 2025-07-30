@@ -1,6 +1,6 @@
 #ifndef __ASSEMBLER__
 
-// which hart (core) is this?
+// 这是哪个 hart (核心)？
 static inline uint64
 r_mhartid()
 {
@@ -9,13 +9,13 @@ r_mhartid()
   return x;
 }
 
-// Machine Status Register, mstatus
+// 机器状态寄存器, mstatus
 
-#define MSTATUS_MPP_MASK (3L << 11) // previous mode.
-#define MSTATUS_MPP_M (3L << 11)
-#define MSTATUS_MPP_S (1L << 11)
-#define MSTATUS_MPP_U (0L << 11)
-#define MSTATUS_MIE (1L << 3)    // machine-mode interrupt enable.
+#define MSTATUS_MPP_MASK (3L << 11) // 先前模式
+#define MSTATUS_MPP_M (3L << 11)    // 机器模式
+#define MSTATUS_MPP_S (1L << 11)    // 监督者模式
+#define MSTATUS_MPP_U (0L << 11)    // 用户模式
+#define MSTATUS_MIE (1L << 3)       // 机器模式中断使能
 
 static inline uint64
 r_mstatus()
@@ -31,22 +31,21 @@ w_mstatus(uint64 x)
   asm volatile("csrw mstatus, %0" : : "r" (x));
 }
 
-// machine exception program counter, holds the
-// instruction address to which a return from
-// exception will go.
-static inline void 
+// 机器异常程序计数器，保存异常返回后
+// 将要执行的指令地址。
+static inline void
 w_mepc(uint64 x)
 {
   asm volatile("csrw mepc, %0" : : "r" (x));
 }
 
-// Supervisor Status Register, sstatus
+// 监督者状态寄存器, sstatus
 
-#define SSTATUS_SPP (1L << 8)  // Previous mode, 1=Supervisor, 0=User
-#define SSTATUS_SPIE (1L << 5) // Supervisor Previous Interrupt Enable
-#define SSTATUS_UPIE (1L << 4) // User Previous Interrupt Enable
-#define SSTATUS_SIE (1L << 1)  // Supervisor Interrupt Enable
-#define SSTATUS_UIE (1L << 0)  // User Interrupt Enable
+#define SSTATUS_SPP (1L << 8)  // 先前模式, 1=监督者, 0=用户
+#define SSTATUS_SPIE (1L << 5) // 监督者先前中断使能
+#define SSTATUS_UPIE (1L << 4) // 用户先前中断使能
+#define SSTATUS_SIE (1L << 1)  // 监督者中断使能
+#define SSTATUS_UIE (1L << 0)  // 用户中断使能
 
 static inline uint64
 r_sstatus()
@@ -62,7 +61,7 @@ w_sstatus(uint64 x)
   asm volatile("csrw sstatus, %0" : : "r" (x));
 }
 
-// Supervisor Interrupt Pending
+// 监督者中断挂起寄存器
 static inline uint64
 r_sip()
 {
@@ -77,10 +76,10 @@ w_sip(uint64 x)
   asm volatile("csrw sip, %0" : : "r" (x));
 }
 
-// Supervisor Interrupt Enable
-#define SIE_SEIE (1L << 9) // external
-#define SIE_STIE (1L << 5) // timer
-#define SIE_SSIE (1L << 1) // software
+// 监督者中断使能寄存器
+#define SIE_SEIE (1L << 9) // 外部中断
+#define SIE_STIE (1L << 5) // 时钟中断
+#define SIE_SSIE (1L << 1) // 软件中断
 static inline uint64
 r_sie()
 {
@@ -95,8 +94,8 @@ w_sie(uint64 x)
   asm volatile("csrw sie, %0" : : "r" (x));
 }
 
-// Machine-mode Interrupt Enable
-#define MIE_STIE (1L << 5)  // supervisor timer
+// 机器模式中断使能寄存器
+#define MIE_STIE (1L << 5)  // 监督者时钟中断
 static inline uint64
 r_mie()
 {
@@ -111,10 +110,9 @@ w_mie(uint64 x)
   asm volatile("csrw mie, %0" : : "r" (x));
 }
 
-// supervisor exception program counter, holds the
-// instruction address to which a return from
-// exception will go.
-static inline void 
+// 监督者异常程序计数器，保存异常返回后
+// 将要执行的指令地址。
+static inline void
 w_sepc(uint64 x)
 {
   asm volatile("csrw sepc, %0" : : "r" (x));
@@ -128,7 +126,7 @@ r_sepc()
   return x;
 }
 
-// Machine Exception Delegation
+// 机器异常委托寄存器
 static inline uint64
 r_medeleg()
 {
@@ -143,7 +141,7 @@ w_medeleg(uint64 x)
   asm volatile("csrw medeleg, %0" : : "r" (x));
 }
 
-// Machine Interrupt Delegation
+// 机器中断委托寄存器
 static inline uint64
 r_mideleg()
 {
@@ -158,9 +156,9 @@ w_mideleg(uint64 x)
   asm volatile("csrw mideleg, %0" : : "r" (x));
 }
 
-// Supervisor Trap-Vector Base Address
-// low two bits are mode.
-static inline void 
+// 监督者陷阱向量基地址
+// 低两位是模式
+static inline void
 w_stvec(uint64 x)
 {
   asm volatile("csrw stvec, %0" : : "r" (x));
@@ -174,7 +172,7 @@ r_stvec()
   return x;
 }
 
-// Supervisor Timer Comparison Register
+// 监督者时钟比较寄存器
 static inline uint64
 r_stimecmp()
 {
@@ -191,7 +189,7 @@ w_stimecmp(uint64 x)
   asm volatile("csrw 0x14d, %0" : : "r" (x));
 }
 
-// Machine Environment Configuration Register
+// 机器环境配置寄存器
 static inline uint64
 r_menvcfg()
 {
@@ -208,7 +206,7 @@ w_menvcfg(uint64 x)
   asm volatile("csrw 0x30a, %0" : : "r" (x));
 }
 
-// Physical Memory Protection
+// 物理内存保护
 static inline void
 w_pmpcfg0(uint64 x)
 {
@@ -221,14 +219,14 @@ w_pmpaddr0(uint64 x)
   asm volatile("csrw pmpaddr0, %0" : : "r" (x));
 }
 
-// use riscv's sv39 page table scheme.
+// 使用 RISC-V 的 Sv39 分页方案。
 #define SATP_SV39 (8L << 60)
 
 #define MAKE_SATP(pagetable) (SATP_SV39 | (((uint64)pagetable) >> 12))
 
-// supervisor address translation and protection;
-// holds the address of the page table.
-static inline void 
+// 监督者地址转换和保护寄存器；
+// 保存页表的地址。
+static inline void
 w_satp(uint64 x)
 {
   asm volatile("csrw satp, %0" : : "r" (x));
@@ -242,7 +240,7 @@ r_satp()
   return x;
 }
 
-// Supervisor Trap Cause
+// 监督者陷阱原因寄存器
 static inline uint64
 r_scause()
 {
@@ -251,7 +249,7 @@ r_scause()
   return x;
 }
 
-// Supervisor Trap Value
+// 监督者陷阱值寄存器
 static inline uint64
 r_stval()
 {
@@ -260,8 +258,8 @@ r_stval()
   return x;
 }
 
-// Machine-mode Counter-Enable
-static inline void 
+// 机器模式计数器使能寄存器
+static inline void
 w_mcounteren(uint64 x)
 {
   asm volatile("csrw mcounteren, %0" : : "r" (x));
@@ -275,7 +273,7 @@ r_mcounteren()
   return x;
 }
 
-// machine-mode cycle counter
+// 机器模式周期计数器
 static inline uint64
 r_time()
 {
@@ -284,21 +282,21 @@ r_time()
   return x;
 }
 
-// enable device interrupts
+// 使能设备中断
 static inline void
 intr_on()
 {
   w_sstatus(r_sstatus() | SSTATUS_SIE);
 }
 
-// disable device interrupts
+// 禁能设备中断
 static inline void
 intr_off()
 {
   w_sstatus(r_sstatus() & ~SSTATUS_SIE);
 }
 
-// are device interrupts enabled?
+// 设备中断是否已使能？
 static inline int
 intr_get()
 {
@@ -314,8 +312,8 @@ r_sp()
   return x;
 }
 
-// read and write tp, the thread pointer, which xv6 uses to hold
-// this core's hartid (core number), the index into cpus[].
+// 读写 tp (线程指针)，xv6 用它来保存
+// 当前核心的 hartid (核心编号)，即 cpus[] 数组的索引。
 static inline uint64
 r_tp()
 {
@@ -338,45 +336,46 @@ r_ra()
   return x;
 }
 
-// flush the TLB.
+// 刷新 TLB
 static inline void
 sfence_vma()
 {
-  // the zero, zero means flush all TLB entries.
+  // 两个 zero 表示刷新所有 TLB 条目。
   asm volatile("sfence.vma zero, zero");
 }
 
-typedef uint64 pte_t;
-typedef uint64 *pagetable_t; // 512 PTEs
+typedef uint64 pte_t;       // 页表项
+typedef uint64 *pagetable_t; // 512 个 PTE
 
 #endif // __ASSEMBLER__
 
-#define PGSIZE 4096 // bytes per page
-#define PGSHIFT 12  // bits of offset within a page
+#define PGSIZE 4096 // 每页字节数
+#define PGSHIFT 12  // 页内偏移的位数
 
-#define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
-#define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))
+#define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1)) // 向上取整到页边界
+#define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1)) // 向下取整到页边界
 
-#define PTE_V (1L << 0) // valid
-#define PTE_R (1L << 1)
-#define PTE_W (1L << 2)
-#define PTE_X (1L << 3)
-#define PTE_U (1L << 4) // user can access
+#define PTE_V (1L << 0) // 有效
+#define PTE_R (1L << 1) // 可读
+#define PTE_W (1L << 2) // 可写
+#define PTE_X (1L << 3) // 可执行
+#define PTE_U (1L << 4) // 用户可访问
 
-// shift a physical address to the right place for a PTE.
+// 将物理地址转换为 PTE 格式
 #define PA2PTE(pa) ((((uint64)pa) >> 12) << 10)
 
+// 将 PTE 转换为物理地址
 #define PTE2PA(pte) (((pte) >> 10) << 12)
 
+// 获取 PTE 的标志位
 #define PTE_FLAGS(pte) ((pte) & 0x3FF)
 
-// extract the three 9-bit page table indices from a virtual address.
-#define PXMASK          0x1FF // 9 bits
+// 从虚拟地址中提取三级 9 位页表索引。
+#define PXMASK          0x1FF // 9 位掩码
 #define PXSHIFT(level)  (PGSHIFT+(9*(level)))
 #define PX(level, va) ((((uint64) (va)) >> PXSHIFT(level)) & PXMASK)
 
-// one beyond the highest possible virtual address.
-// MAXVA is actually one bit less than the max allowed by
-// Sv39, to avoid having to sign-extend virtual addresses
-// that have the high bit set.
+// 超过最高可能虚拟地址的值。
+// MAXVA 实际上比 Sv39 允许的最大值小一位，
+// 以避免对设置了最高位的虚拟地址进行符号扩展。
 #define MAXVA (1L << (9 + 9 + 9 + 12 - 1))

@@ -4,7 +4,7 @@
 #include "user/user.h"
 
 //
-// wrapper so that it's OK if main() does not call exit().
+// 包装器，这样即使 main() 不调用 exit() 也没关系。
 //
 void
 start()
@@ -14,6 +14,7 @@ start()
   exit(0);
 }
 
+// 字符串复制
 char*
 strcpy(char *s, const char *t)
 {
@@ -25,6 +26,7 @@ strcpy(char *s, const char *t)
   return os;
 }
 
+// 字符串比较
 int
 strcmp(const char *p, const char *q)
 {
@@ -33,6 +35,7 @@ strcmp(const char *p, const char *q)
   return (uchar)*p - (uchar)*q;
 }
 
+// 计算字符串长度
 uint
 strlen(const char *s)
 {
@@ -43,6 +46,7 @@ strlen(const char *s)
   return n;
 }
 
+// 内存设置
 void*
 memset(void *dst, int c, uint n)
 {
@@ -54,6 +58,7 @@ memset(void *dst, int c, uint n)
   return dst;
 }
 
+// 在字符串中查找字符
 char*
 strchr(const char *s, char c)
 {
@@ -63,6 +68,7 @@ strchr(const char *s, char c)
   return 0;
 }
 
+// 从标准输入读取一行
 char*
 gets(char *buf, int max)
 {
@@ -81,6 +87,7 @@ gets(char *buf, int max)
   return buf;
 }
 
+// 获取文件状态
 int
 stat(const char *n, struct stat *st)
 {
@@ -95,6 +102,7 @@ stat(const char *n, struct stat *st)
   return r;
 }
 
+// 字符串转整数
 int
 atoi(const char *s)
 {
@@ -106,6 +114,7 @@ atoi(const char *s)
   return n;
 }
 
+// 内存移动
 void*
 memmove(void *vdst, const void *vsrc, int n)
 {
@@ -126,6 +135,7 @@ memmove(void *vdst, const void *vsrc, int n)
   return vdst;
 }
 
+// 内存比较
 int
 memcmp(const void *s1, const void *s2, uint n)
 {
@@ -140,6 +150,7 @@ memcmp(const void *s1, const void *s2, uint n)
   return 0;
 }
 
+// 内存复制
 void *
 memcpy(void *dst, const void *src, uint n)
 {

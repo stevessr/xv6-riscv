@@ -1,42 +1,46 @@
         #
-        # low-level code to handle traps from user space into
-        # the kernel, and returns from kernel to user.
+        # trampoline.S: 用户态/内核态切换的跳板
         #
-        # the kernel maps the page holding this code
-        # at the same virtual address (TRAMPOLINE)
-        # in user and kernel space so that it continues
-        # to work when it switches page tables.
-        # kernel.ld causes this code to start at 
-        # a page boundary.
+        # 这段底层代码用于处理从用户空间到内核的陷入（trap），以及从内核返回用户空间。
+        #
+        # 内核将包含此代码的页面映射到用户和内核空间中相同的虚拟地址（TRAMPOLINE），
+        # 这样在切换页表时，它仍然可以继续工作。
+        #
+        # kernel.ld 链接器脚本确保这段代码从一个页面边界开始。
         #
 
 #include "riscv.h"
 #include "memlayout.h"
 
+# 声明一个名为 trampsec 的段，用于存放跳板代码
 .section trampsec
+
+# 全局符号，供其他文件引用
 .globl trampoline
 .globl usertrap
 trampoline:
-.align 4
+.align 4 # 4字节对齐
 .globl uservec
 uservec:    
 	#
-        # trap.c sets stvec to point here, so
-        # traps from user space start here,
-        # in supervisor mode, but with a
-        # user page table.
+        # trap.c 中的 usertrapinit() 会将 stvec 寄存器设置为指向 uservec。
+        # 因此，来自用户空间的所有陷入（中断、异常、系统调用）都会从这里开始执行。
+        # 此时，CPU 处于监管者模式（supervisor mode），但页表仍然是用户的页表。
         #
 
-        # save user a0 in sscratch so
-        # a0 can be used to get at TRAPFRAME.
+        # 为了能够使用 a0 寄存器来访问 TRAPFRAME，
+        # 首先需要将用户态的 a0 寄存器的值保存到 sscratch 寄存器中。
+        # sscratch 是一个专为这类场景设计的暂存 CSR。
         csrw sscratch, a0
 
-        # each process has a separate p->trapframe memory area,
-        # but it's mapped to the same virtual address
-        # (TRAPFRAME) in every process's user page table.
+        # 加载 TRAPFRAME 的地址到 a0 寄存器。
+        # 每个进程都有一个独立的 p->trapframe 内存区域，
+        # 但在每个进程的用户页表中，它都被映射到相同的虚拟地址 TRAPFRAME。
         li a0, TRAPFRAME
         
-        # save the user registers in TRAPFRAME
+        # 将所有用户寄存器保存到 a0 指向的 TRAPFRAME 中。
+        # TRAPFRAME 的布局定义在 proc.h 中的 struct trapframe 中。
+        # a0 已经被保存在 sscratch 中，所以这里先保存其他寄存器。
         sd ra, 40(a0)
         sd sp, 48(a0)
         sd gp, 56(a0)
@@ -68,50 +72,57 @@ uservec:
         sd t5, 272(a0)
         sd t6, 280(a0)
 
-	# save the user a0 in p->trapframe->a0
+	# 从 sscratch 中读回用户态的 a0，并将其保存在 TRAPFRAME 中。
         csrr t0, sscratch
         sd t0, 112(a0)
 
-        # initialize kernel stack pointer, from p->trapframe->kernel_sp
+        # 从 p->trapframe->kernel_sp 加载该进程的内核栈指针。
         ld sp, 8(a0)
 
-        # make tp hold the current hartid, from p->trapframe->kernel_hartid
+        # 从 p->trapframe->kernel_hartid 加载当前 hart (cpu核心) 的 ID 到 tp 寄存器。
+        # 在内核中，tp 寄存器约定为保存 hartid。
         ld tp, 32(a0)
 
-        # load the address of usertrap(), from p->trapframe->kernel_trap
+        # 从 p->trapframe->kernel_trap 加载 C 语言的陷入处理函数 usertrap() 的地址。
         ld t0, 16(a0)
 
-        # fetch the kernel page table address, from p->trapframe->kernel_satp.
+        # 从 p->trapframe->kernel_satp 获取内核页表的地址。
         ld t1, 0(a0)
 
-        # wait for any previous memory operations to complete, so that
-        # they use the user page table.
+        # 执行 sfence.vma 指令，确保所有之前的内存操作（它们使用的是用户页表）
+        # 都已经完成。这是一个内存屏障。
         sfence.vma zero, zero
 
-        # install the kernel page table.
+        # 将内核页表的地址写入 satp 寄存器，正式切换到内核地址空间。
         csrw satp, t1
 
-        # flush now-stale user entries from the TLB.
+        # 再次执行 sfence.vma，刷新 TLB（Translation Lookaside Buffer）。
+        # 因为页表已经切换，旧的用户页表条目（PTE）在 TLB 中可能已经过时，需要使其失效。
         sfence.vma zero, zero
 
-        # jump to usertrap(), which does not return
+        # 跳转到 usertrap() 函数（地址在 t0 中），该函数不会返回到这里。
+        # 从这里开始，执行 C 语言的内核代码。
         jr t0
 
 .globl userret
 userret:
         # userret(pagetable)
-        # called by usertrapret() in trap.c to
-        # switch from kernel to user.
-        # a0: user page table, for satp.
+        # 由 trap.c 中的 usertrapret() 调用，用于从内核切换回用户态。
+        # a0: 传入的用户页表的地址，用于设置 satp。
 
-        # switch to the user page table.
+        # 在切换页表之前，刷新 TLB，确保所有内核内存访问都已完成。
         sfence.vma zero, zero
+
+        # 将用户页表的地址写入 satp 寄存器，切换回用户地址空间。
         csrw satp, a0
+
+        # 再次刷新 TLB，清除旧的内核页表条目。
         sfence.vma zero, zero
 
+        # 将 TRAPFRAME 的地址加载到 a0，准备恢复寄存器。
         li a0, TRAPFRAME
 
-        # restore all but a0 from TRAPFRAME
+        # 从 TRAPFRAME 中恢复除了 a0 之外的所有用户寄存器。
         ld ra, 40(a0)
         ld sp, 48(a0)
         ld gp, 56(a0)
@@ -143,9 +154,10 @@ userret:
         ld t5, 272(a0)
         ld t6, 280(a0)
 
-	# restore user a0
+	# 最后恢复用户 a0 寄存器（通常是系统调用的返回值）。
         ld a0, 112(a0)
         
-        # return to user mode and user pc.
-        # usertrapret() set up sstatus and sepc.
+        # 执行 sret 指令，从监管者模式返回到用户模式。
+        # usertrapret() 已经设置好了 sstatus (恢复之前的特权级和中断状态)
+        # 和 sepc (设置返回到用户代码的地址)。
         sret

@@ -1,5 +1,5 @@
 //
-// Support functions for system calls that involve file descriptors.
+// 为涉及文件描述符的系统调用提供支持函数。
 //
 
 #include "types.h"
@@ -13,19 +13,19 @@
 #include "stat.h"
 #include "proc.h"
 
-struct devsw devsw[NDEV];
+struct devsw devsw[NDEV]; // 设备驱动表
 struct {
-  struct spinlock lock;
-  struct file file[NFILE];
+  struct spinlock lock;     // 保护文件表
+  struct file file[NFILE];  // 文件表
 } ftable;
 
 void
 fileinit(void)
 {
-  initlock(&ftable.lock, "ftable");
+  initlock(&ftable.lock, "ftable"); // 初始化文件表锁
 }
 
-// Allocate a file structure.
+// 分配一个文件结构体。
 struct file*
 filealloc(void)
 {
@@ -33,17 +33,17 @@ filealloc(void)
 
   acquire(&ftable.lock);
   for(f = ftable.file; f < ftable.file + NFILE; f++){
-    if(f->ref == 0){
-      f->ref = 1;
+    if(f->ref == 0){ // 找到一个空闲的文件结构体
+      f->ref = 1; // 增加引用计数
       release(&ftable.lock);
       return f;
     }
   }
   release(&ftable.lock);
-  return 0;
+  return 0; // 没有可用的文件结构体
 }
 
-// Increment ref count for file f.
+// 增加文件 f 的引用计数。
 struct file*
 filedup(struct file *f)
 {
@@ -55,7 +55,7 @@ filedup(struct file *f)
   return f;
 }
 
-// Close file f.  (Decrement ref count, close when reaches 0.)
+// 关闭文件 f。（减少引用计数，当引用计数为 0 时关闭。）
 void
 fileclose(struct file *f)
 {
@@ -64,26 +64,27 @@ fileclose(struct file *f)
   acquire(&ftable.lock);
   if(f->ref < 1)
     panic("fileclose");
-  if(--f->ref > 0){
+  if(--f->ref > 0){ // 还有其他引用，直接返回
     release(&ftable.lock);
     return;
   }
+  // 引用计数为 0，真正关闭文件
   ff = *f;
   f->ref = 0;
   f->type = FD_NONE;
   release(&ftable.lock);
 
-  if(ff.type == FD_PIPE){
+  if(ff.type == FD_PIPE){ // 如果是管道文件
     pipeclose(ff.pipe, ff.writable);
-  } else if(ff.type == FD_INODE || ff.type == FD_DEVICE){
+  } else if(ff.type == FD_INODE || ff.type == FD_DEVICE){ // 如果是 inode 或设备文件
     begin_op();
-    iput(ff.ip);
+    iput(ff.ip); // 释放 inode
     end_op();
   }
 }
 
-// Get metadata about file f.
-// addr is a user virtual address, pointing to a struct stat.
+// 获取文件 f 的元数据。
+// addr 是一个用户虚拟地址，指向一个 struct stat。
 int
 filestat(struct file *f, uint64 addr)
 {
@@ -92,8 +93,9 @@ filestat(struct file *f, uint64 addr)
   
   if(f->type == FD_INODE || f->type == FD_DEVICE){
     ilock(f->ip);
-    stati(f->ip, &st);
+    stati(f->ip, &st); // 获取 inode 的状态信息
     iunlock(f->ip);
+    // 将状态信息复制到用户空间
     if(copyout(p->pagetable, addr, (char *)&st, sizeof(st)) < 0)
       return -1;
     return 0;
@@ -101,14 +103,14 @@ filestat(struct file *f, uint64 addr)
   return -1;
 }
 
-// Read from file f.
-// addr is a user virtual address.
+// 从文件 f 读取数据。
+// addr 是一个用户虚拟地址。
 int
 fileread(struct file *f, uint64 addr, int n)
 {
   int r = 0;
 
-  if(f->readable == 0)
+  if(f->readable == 0) // 文件不可读
     return -1;
 
   if(f->type == FD_PIPE){
@@ -120,7 +122,7 @@ fileread(struct file *f, uint64 addr, int n)
   } else if(f->type == FD_INODE){
     ilock(f->ip);
     if((r = readi(f->ip, 1, addr, f->off, n)) > 0)
-      f->off += r;
+      f->off += r; // 更新文件偏移量
     iunlock(f->ip);
   } else {
     panic("fileread");
@@ -129,14 +131,14 @@ fileread(struct file *f, uint64 addr, int n)
   return r;
 }
 
-// Write to file f.
-// addr is a user virtual address.
+// 向文件 f 写入数据。
+// addr 是一个用户虚拟地址。
 int
 filewrite(struct file *f, uint64 addr, int n)
 {
   int r, ret = 0;
 
-  if(f->writable == 0)
+  if(f->writable == 0) // 文件不可写
     return -1;
 
   if(f->type == FD_PIPE){
@@ -146,12 +148,11 @@ filewrite(struct file *f, uint64 addr, int n)
       return -1;
     ret = devsw[f->major].write(1, addr, n);
   } else if(f->type == FD_INODE){
-    // write a few blocks at a time to avoid exceeding
-    // the maximum log transaction size, including
-    // i-node, indirect block, allocation blocks,
-    // and 2 blocks of slop for non-aligned writes.
-    // this really belongs lower down, since writei()
-    // might be writing a device like the console.
+    // 为了避免超出最大日志事务大小，一次写入几个块。
+    // 这包括 i-node、间接块、分配块，
+    // 以及为非对齐写入准备的 2 个块的余量。
+    // 这个逻辑实际上应该放在更底层，因为 writei()
+    // 可能正在写入像控制台这样的设备。
     int max = ((MAXOPBLOCKS-1-1-2) / 2) * BSIZE;
     int i = 0;
     while(i < n){
@@ -162,12 +163,12 @@ filewrite(struct file *f, uint64 addr, int n)
       begin_op();
       ilock(f->ip);
       if ((r = writei(f->ip, 1, addr + i, f->off, n1)) > 0)
-        f->off += r;
+        f->off += r; // 更新文件偏移量
       iunlock(f->ip);
       end_op();
 
       if(r != n1){
-        // error from writei
+        // writei 出错
         break;
       }
       i += r;
@@ -179,4 +180,3 @@ filewrite(struct file *f, uint64 addr, int n)
 
   return ret;
 }
-

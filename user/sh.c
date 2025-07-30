@@ -1,17 +1,17 @@
-// Shell.
+// Shell
 
 #include "kernel/types.h"
 #include "user/user.h"
 #include "kernel/fcntl.h"
 
-// Parsed command representation
-#define EXEC  1
-#define REDIR 2
-#define PIPE  3
-#define LIST  4
-#define BACK  5
+// 解析后的命令表示
+#define EXEC  1 // 执行命令
+#define REDIR 2 // 重定向
+#define PIPE  3 // 管道
+#define LIST  4 // 命令列表（分号）
+#define BACK  5 // 后台执行
 
-#define MAXARGS 10
+#define MAXARGS 10 // 最大参数个数
 
 struct cmd {
   int type;
@@ -49,12 +49,12 @@ struct backcmd {
   struct cmd *cmd;
 };
 
-int fork1(void);  // Fork but panics on failure.
+int fork1(void);  // Fork，失败时会 panic
 void panic(char*);
 struct cmd *parsecmd(char*);
 void runcmd(struct cmd*) __attribute__((noreturn));
 
-// Execute cmd.  Never returns.
+// 执行命令，永不返回
 void
 runcmd(struct cmd *cmd)
 {
@@ -131,6 +131,7 @@ runcmd(struct cmd *cmd)
   exit(0);
 }
 
+// 从控制台获取一行命令
 int
 getcmd(char *buf, int nbuf)
 {
@@ -148,7 +149,7 @@ main(void)
   static char buf[100];
   int fd;
 
-  // Ensure that three file descriptors are open.
+  // 确保三个文件描述符是打开的
   while((fd = open("console", O_RDWR)) >= 0){
     if(fd >= 3){
       close(fd);
@@ -156,11 +157,11 @@ main(void)
     }
   }
 
-  // Read and run input commands.
+  // 读取并执行输入的命令
   while(getcmd(buf, sizeof(buf)) >= 0){
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
-      // Chdir must be called by the parent, not the child.
-      buf[strlen(buf)-1] = 0;  // chop \n
+      // Chdir 必须由父进程调用，而不是子进程
+      buf[strlen(buf)-1] = 0;  // 去掉 \n
       if(chdir(buf+3) < 0)
         fprintf(2, "cannot cd %s\n", buf+3);
       continue;
@@ -191,7 +192,7 @@ fork1(void)
 }
 
 //PAGEBREAK!
-// Constructors
+// 构造函数
 
 struct cmd*
 execcmd(void)
@@ -258,7 +259,7 @@ backcmd(struct cmd *subcmd)
   return (struct cmd*)cmd;
 }
 //PAGEBREAK!
-// Parsing
+// 解析
 
 char whitespace[] = " \t\r\n\v";
 char symbols[] = "<|>&;()";
@@ -446,7 +447,7 @@ parseexec(char **ps, char *es)
   return ret;
 }
 
-// NUL-terminate all the counted strings.
+// 用 NUL 终止所有计数的字符串
 struct cmd*
 nulterminate(struct cmd *cmd)
 {

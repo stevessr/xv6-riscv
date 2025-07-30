@@ -7,20 +7,24 @@
 #include "syscall.h"
 #include "defs.h"
 
-// Fetch the uint64 at addr from the current process.
+// 从当前进程的用户空间地址 addr 处获取一个 uint64。
+// 成功时，将值存入 *ip 并返回 0。失败返回 -1。
 int
 fetchaddr(uint64 addr, uint64 *ip)
 {
   struct proc *p = myproc();
-  if(addr >= p->sz || addr+sizeof(uint64) > p->sz) // both tests needed, in case of overflow
+  // 检查地址是否在进程的地址空间内。
+  // 两个检查都是必需的，以防地址溢出。
+  if(addr >= p->sz || addr+sizeof(uint64) > p->sz)
     return -1;
+  // 从用户空间拷贝数据到内核空间。
   if(copyin(p->pagetable, (char *)ip, addr, sizeof(*ip)) != 0)
     return -1;
   return 0;
 }
 
-// Fetch the nul-terminated string at addr from the current process.
-// Returns length of string, not including nul, or -1 for error.
+// 从当前进程的用户空间地址 addr 处获取一个以 nul 结尾的字符串。
+// 成功时返回字符串长度（不包括nul），失败返回 -1。
 int
 fetchstr(uint64 addr, char *buf, int max)
 {
@@ -30,6 +34,7 @@ fetchstr(uint64 addr, char *buf, int max)
   return strlen(buf);
 }
 
+// 从陷阱帧中获取原始的第 n 个系统调用参数（a0-a5）。
 static uint64
 argraw(int n)
 {
@@ -52,25 +57,25 @@ argraw(int n)
   return -1;
 }
 
-// Fetch the nth 32-bit system call argument.
+// 获取第 n 个 32 位系统调用参数，并将其存入 *ip。
 void
 argint(int n, int *ip)
 {
   *ip = argraw(n);
 }
 
-// Retrieve an argument as a pointer.
-// Doesn't check for legality, since
-// copyin/copyout will do that.
+// 获取一个指针类型的参数。
+// 这里不检查地址的合法性，因为
+// 之后的 copyin/copyout 会进行检查。
 void
 argaddr(int n, uint64 *ip)
 {
   *ip = argraw(n);
 }
 
-// Fetch the nth word-sized system call argument as a null-terminated string.
-// Copies into buf, at most max.
-// Returns string length if OK (including nul), -1 if error.
+// 获取第 n 个系统调用参数，该参数是一个以 null 结尾的字符串。
+// 将字符串复制到 buf 中，最多 max 个字节。
+// 成功时返回字符串长度，失败返回 -1。
 int
 argstr(int n, char *buf, int max)
 {
@@ -79,7 +84,8 @@ argstr(int n, char *buf, int max)
   return fetchstr(addr, buf, max);
 }
 
-// Prototypes for the functions that handle system calls.
+// 系统调用处理函数的原型声明。
+// 这些函数定义在 sysproc.c 和 sysfile.c 中。
 extern uint64 sys_fork(void);
 extern uint64 sys_exit(void);
 extern uint64 sys_wait(void);
@@ -102,8 +108,8 @@ extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 
-// An array mapping syscall numbers from syscall.h
-// to the function that handles the system call.
+// 一个函数指针数组，将 syscall.h 中的系统调用号
+// 映射到对应的处理函数。
 static uint64 (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
 [SYS_exit]    sys_exit,
@@ -128,16 +134,19 @@ static uint64 (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 };
 
+// 系统调用分发函数。
+// 当用户程序执行 `ecall` 指令时，会陷入内核态，最终调用此函数。
 void
 syscall(void)
 {
   int num;
   struct proc *p = myproc();
 
+  // 从陷阱帧的 a7 寄存器获取系统调用号。
   num = p->trapframe->a7;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    // Use num to lookup the system call function for num, call it,
-    // and store its return value in p->trapframe->a0
+    // 使用 num 作为索引，查找并调用相应的系统调用处理函数。
+    // 将返回值存储在 a0 寄存器中，以便返回给用户程序。
     p->trapframe->a0 = syscalls[num]();
   } else {
     printf("%d %s: unknown sys call %d\n",

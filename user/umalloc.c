@@ -3,7 +3,7 @@
 #include "user/user.h"
 #include "kernel/param.h"
 
-// Memory allocator by Kernighan and Ritchie,
+// Kernighan and Ritchie 的内存分配器,
 // The C programming Language, 2nd ed.  Section 8.7.
 
 typedef long Align;
@@ -21,6 +21,7 @@ typedef union header Header;
 static Header base;
 static Header *freep;
 
+// 释放内存
 void
 free(void *ap)
 {
@@ -43,6 +44,7 @@ free(void *ap)
   freep = p;
 }
 
+// 从内核获取更多内存
 static Header*
 morecore(uint nu)
 {
@@ -60,6 +62,7 @@ morecore(uint nu)
   return freep;
 }
 
+// 内存分配
 void*
 malloc(uint nbytes)
 {

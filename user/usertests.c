@@ -9,12 +9,12 @@
 #include "kernel/riscv.h"
 
 //
-// Tests xv6 system calls.  usertests without arguments runs them all
-// and usertests <name> runs <name> test. The test runner creates for
-// each test a process and based on the exit status of the process,
-// the test runner reports "OK" or "FAILED".  Some tests result in
-// kernel printing usertrap messages, which can be ignored if test
-// prints "OK".
+// xv6 系统调用测试。
+// 不带参数运行 usertests 会执行所有测试。
+// 带参数 usertests <name> 会运行名为 <name> 的测试。
+// 测试运行器为每个测试创建一个进程，并根据进程的退出状态，
+// 报告 "OK" 或 "FAILED"。某些测试会导致内核打印 usertrap 消息，
+// 如果测试打印 "OK"，这些消息可以忽略。
 //
 
 #define BUFSZ  ((MAXOPBLOCKS+2)*BSIZE)
@@ -22,13 +22,11 @@
 char buf[BUFSZ];
 
 //
-// Section with tests that run fairly quickly.  Use -q if you want to
-// run just those.  With -q usertests also runs the ones that take a
-// fair of time.
+// 运行速度相对较快的测试部分。如果只想运行这些测试，请使用 -q 标志。
+// 不带 -q 标志，usertests 也会运行那些耗时较长的测试。
 //
 
-// what if you pass ridiculous pointers to system calls
-// that read user memory with copyin?
+// 测试：向使用 copyin 读取用户内存的系统调用传递无效指针
 void
 copyin(char *s)
 {
@@ -72,8 +70,7 @@ copyin(char *s)
   }
 }
 
-// what if you pass ridiculous pointers to system calls
-// that write user memory with copyout?
+// 测试：向使用 copyout 写入用户内存的系统调用传递无效指针
 void
 copyout(char *s)
 {
@@ -115,7 +112,7 @@ copyout(char *s)
   }
 }
 
-// what if you pass ridiculous string pointers to system calls?
+// 测试：向系统调用传递无效的字符串指针
 void
 copyinstr1(char *s)
 {
@@ -133,9 +130,8 @@ copyinstr1(char *s)
   }
 }
 
-// what if a string system call argument is exactly the size
-// of the kernel buffer it is copied into, so that the null
-// would fall just beyond the end of the kernel buffer?
+// 测试：当字符串系统调用参数的长度恰好是内核缓冲区的大小时，
+// 会发生什么，此时空字符会落在内核缓冲区的末尾之外。
 void
 copyinstr2(char *s)
 {
@@ -197,7 +193,7 @@ copyinstr2(char *s)
   }
 }
 
-// what if a string argument crosses over the end of last user page?
+// 测试：当字符串参数跨越最后一个用户页的末尾时会发生什么？
 void
 copyinstr3(char *s)
 {
@@ -241,8 +237,7 @@ copyinstr3(char *s)
   }
 }
 
-// See if the kernel refuses to read/write user memory that the
-// application doesn't have anymore, because it returned it.
+// 测试：内核是否拒绝读/写应用程序已经通过sbrk释放的用户内存。
 void
 rwsbrk(char *s)
 {
@@ -288,7 +283,7 @@ rwsbrk(char *s)
   exit(0);
 }
 
-// test O_TRUNC.
+// 测试 O_TRUNC。
 void
 truncate1(char *s)
 {
@@ -344,10 +339,9 @@ truncate1(char *s)
   close(fd3);
 }
 
-// write to an open FD whose file has just been truncated.
-// this causes a write at an offset beyond the end of the file.
-// such writes fail on xv6 (unlike POSIX) but at least
-// they don't crash.
+// 测试：写入一个刚被截断的打开的文件描述符。
+// 这会导致在文件末尾之外的偏移量处进行写入。
+// 这种写入在 xv6 上会失败（与 POSIX 不同），但至少它们不会崩溃。
 void
 truncate2(char *s)
 {
@@ -369,6 +363,7 @@ truncate2(char *s)
   close(fd2);
 }
 
+// 并发截断测试
 void
 truncate3(char *s)
 {
@@ -423,7 +418,7 @@ truncate3(char *s)
 }
   
 
-// does chdir() call iput(p->cwd) in a transaction?
+// 测试：chdir() 是否在事务中调用 iput(p->cwd)？
 void
 iputtest(char *s)
 {
@@ -445,7 +440,7 @@ iputtest(char *s)
   }
 }
 
-// does exit() call iput(p->cwd) in a transaction?
+// 测试：exit() 是否在事务中调用 iput(p->cwd)？
 void
 exitiputtest(char *s)
 {
@@ -475,10 +470,8 @@ exitiputtest(char *s)
   exit(xstatus);
 }
 
-// does the error path in open() for attempt to write a
-// directory call iput() in a transaction?
-// needs a hacked kernel that pauses just after the namei()
-// call in sys_open():
+// 测试：open() 中尝试写入目录的错误路径是否在事务中调用 iput()？
+// 需要一个被修改过的内核，在 sys_open() 中的 namei() 调用后暂停：
 //    if((ip = namei(path)) == 0)
 //      return -1;
 //    {
@@ -517,8 +510,9 @@ openiputtest(char *s)
   exit(xstatus);
 }
 
-// simple file system tests
+// 简单的文件系统测试
 
+// 打开文件测试
 void
 opentest(char *s)
 {
@@ -537,6 +531,7 @@ opentest(char *s)
   }
 }
 
+// 写入小文件测试
 void
 writetest(char *s)
 {
@@ -578,6 +573,7 @@ writetest(char *s)
   }
 }
 
+// 写入大文件测试
 void
 writebig(char *s)
 {
@@ -632,7 +628,7 @@ writebig(char *s)
   }
 }
 
-// many creates, followed by unlink test
+// 大量创建文件，然后进行 unlink 测试
 void
 createtest(char *s)
 {
@@ -655,6 +651,7 @@ createtest(char *s)
   }
 }
 
+// 目录操作测试
 void dirtest(char *s)
 {
   if(mkdir("dir0") < 0){
@@ -678,6 +675,7 @@ void dirtest(char *s)
   }
 }
 
+// exec 测试
 void
 exectest(char *s)
 {
@@ -706,7 +704,7 @@ exectest(char *s)
       printf("%s: exec echo failed\n", s);
       exit(1);
     }
-    // won't get to here
+    // 不会执行到这里
   }
   if (wait(&xstatus) != pid) {
     printf("%s: wait failed!\n", s);
@@ -733,8 +731,7 @@ exectest(char *s)
 
 }
 
-// simple fork and pipe read/write
-
+// 简单的 fork 和 pipe 读/写测试
 void
 pipe1(char *s)
 {
@@ -789,7 +786,7 @@ pipe1(char *s)
 }
 
 
-// test if child is killed (status = -1)
+// 测试子进程被杀死时（状态 = -1）
 void
 killstatus(char *s)
 {
@@ -818,7 +815,7 @@ killstatus(char *s)
   exit(0);
 }
 
-// meant to be run w/ at most two CPUs
+// 抢占测试，设计在最多两个 CPU 的环境下运行
 void
 preempt(char *s)
 {
@@ -874,7 +871,7 @@ preempt(char *s)
   wait(0);
 }
 
-// try to find any races between exit and wait
+// 尝试查找 exit 和 wait 之间的任何竞争条件
 void
 exitwait(char *s)
 {
@@ -902,9 +899,8 @@ exitwait(char *s)
   }
 }
 
-// try to find races in the reparenting
-// code that handles a parent exiting
-// when it still has live children.
+// 尝试在处理父进程退出时仍有存活子进程的
+// 重新认领父进程的代码中发现竞争条件。
 void
 reparent(char *s)
 {
@@ -932,7 +928,7 @@ reparent(char *s)
   exit(0);
 }
 
-// what if two children exit() at the same time?
+// 测试：如果两个子进程同时 exit() 会发生什么？
 void
 twochildren(char *s)
 {
@@ -960,7 +956,7 @@ twochildren(char *s)
   }
 }
 
-// concurrent forks to try to expose locking bugs.
+// 并发 fork 以尝试暴露锁错误。
 void
 forkfork(char *s)
 {
@@ -997,6 +993,7 @@ forkfork(char *s)
   }
 }
 
+// fork 压力测试
 void
 forkforkfork(char *s)
 {
@@ -1027,11 +1024,9 @@ forkforkfork(char *s)
   sleep(10); // one second
 }
 
-// regression test. does reparent() violate the parent-then-child
-// locking order when giving away a child to init, so that exit()
-// deadlocks against init's wait()? also used to trigger a "panic:
-// release" due to exit() releasing a different p->parent->lock than
-// it acquired.
+// 回归测试。reparent() 在将子进程交给 init 时是否违反了
+// 先父后子的锁定顺序，从而导致 exit() 与 init 的 wait() 死锁？
+// 也用于触发 "panic: release"，因为 exit() 释放了与其获取的不同的 p->parent->lock。
 void
 reparent2(char *s)
 {
@@ -1052,7 +1047,7 @@ reparent2(char *s)
   exit(0);
 }
 
-// allocate all mem, free it, and allocate again
+// 分配所有内存，释放它，然后再次分配
 void
 mem(char *s)
 {
@@ -1081,18 +1076,18 @@ mem(char *s)
     int xstatus;
     wait(&xstatus);
     if(xstatus == -1){
-      // probably page fault, so might be lazy lab,
-      // so OK.
+      // 可能是页面错误，所以可能是 lazy lab，
+      // 所以没关系。
       exit(0);
     }
     exit(xstatus);
   }
 }
 
-// More file system tests
+// 更多文件系统测试
 
-// two processes write to the same file descriptor
-// is the offset shared? does inode locking work?
+// 两个进程写入同一个文件描述符
+// 偏移量是共享的吗？inode 锁定是否有效？
 void
 sharedfd(char *s)
 {
@@ -1148,8 +1143,7 @@ sharedfd(char *s)
   }
 }
 
-// four processes write different files at the same
-// time, to test block allocation.
+// 四个进程同时写入不同的文件，以测试块分配。
 void
 fourfiles(char *s)
 {
@@ -1215,7 +1209,7 @@ fourfiles(char *s)
   }
 }
 
-// four processes create and delete different files in same directory
+// 四个进程在同一目录中创建和删除不同的文件
 void
 createdelete(char *s)
 {
@@ -1287,7 +1281,7 @@ createdelete(char *s)
   }
 }
 
-// can I unlink a file and still read it?
+// 测试：我能 unlink 一个文件然后仍然读取它吗？
 void
 unlinkread(char *s)
 {
@@ -1332,6 +1326,7 @@ unlinkread(char *s)
   unlink("unlinkread");
 }
 
+// 链接测试
 void
 linktest(char *s)
 {
@@ -1391,7 +1386,7 @@ linktest(char *s)
   }
 }
 
-// test concurrent create/link/unlink of the same file
+// 测试并发创建/链接/删除同一个文件
 void
 concreate(char *s)
 {
@@ -1489,8 +1484,7 @@ concreate(char *s)
   }
 }
 
-// another concurrent link/unlink/create test,
-// to look for deadlocks.
+// 另一个并发链接/删除/创建测试，用于查找死锁。
 void
 linkunlink(char *s)
 {
@@ -1522,6 +1516,7 @@ linkunlink(char *s)
 }
 
 
+// 子目录测试
 void
 subdir(char *s)
 {
@@ -1701,7 +1696,7 @@ subdir(char *s)
   }
 }
 
-// test writes that are larger than the log.
+// 测试大于日志大小的写入。
 void
 bigwrite(char *s)
 {
@@ -1728,6 +1723,7 @@ bigwrite(char *s)
 }
 
 
+// 大文件测试
 void
 bigfile(char *s)
 {
@@ -1781,12 +1777,13 @@ bigfile(char *s)
   unlink("bigfile.dat");
 }
 
+// 文件名长度测试
 void
 fourteen(char *s)
 {
   int fd;
 
-  // DIRSIZ is 14.
+  // DIRSIZ 是 14。
 
   if(mkdir("12345678901234") != 0){
     printf("%s: mkdir 12345678901234 failed\n", s);
@@ -1827,6 +1824,7 @@ fourteen(char *s)
   unlink("12345678901234");
 }
 
+// 删除 "." 和 ".." 测试
 void
 rmdot(char *s)
 {
@@ -1864,6 +1862,7 @@ rmdot(char *s)
   }
 }
 
+// 目录与文件同名测试
 void
 dirfile(char *s)
 {
@@ -1919,8 +1918,8 @@ dirfile(char *s)
   close(fd);
 }
 
-// test that iput() is called at the end of _namei().
-// also tests empty file names.
+// 测试 iput() 是否在 _namei() 的末尾被调用。
+// 同时测试空文件名。
 void
 iref(char *s)
 {
@@ -1956,9 +1955,9 @@ iref(char *s)
   chdir("/");
 }
 
-// test that fork fails gracefully
-// the forktest binary also does this, but it runs out of proc entries first.
-// inside the bigger usertests binary, we run out of memory first.
+// 测试 fork 失败能否正常处理
+// forktest 二进制文件也做这个，但它首先会用完进程条目。
+// 在更大的 usertests 二进制文件中，我们首先会用完内存。
 void
 forktest(char *s)
 {
@@ -1996,6 +1995,7 @@ forktest(char *s)
   }
 }
 
+// sbrk 基本测试
 void
 sbrkbasic(char *s)
 {
@@ -2003,7 +2003,7 @@ sbrkbasic(char *s)
   int i, pid, xstatus;
   char *c, *a, *b;
 
-  // does sbrk() return the expected failure value?
+  // sbrk() 是否返回预期的失败值？
   pid = fork();
   if(pid < 0){
     printf("fork failed in sbrkbasic\n");
@@ -2012,7 +2012,7 @@ sbrkbasic(char *s)
   if(pid == 0){
     a = sbrk(TOOMUCH);
     if(a == (char*)0xffffffffffffffffL){
-      // it's OK if this fails.
+      // 如果这个失败了也没关系。
       exit(0);
     }
     
@@ -2020,9 +2020,9 @@ sbrkbasic(char *s)
       *b = 99;
     }
     
-    // we should not get here! either sbrk(TOOMUCH)
-    // should have failed, or (with lazy allocation)
-    // a pagefault should have killed this process.
+    // 我们不应该到这里！要么 sbrk(TOOMUCH)
+    // 应该失败，要么（使用懒分配）
+    // 页面错误应该已经杀死了这个进程。
     exit(1);
   }
 
@@ -2032,7 +2032,7 @@ sbrkbasic(char *s)
     exit(1);
   }
 
-  // can one sbrk() less than a page?
+  // sbrk() 能否分配小于一页的内存？
   a = sbrk(0);
   for(i = 0; i < 5000; i++){
     b = sbrk(1);
@@ -2060,6 +2060,7 @@ sbrkbasic(char *s)
   exit(xstatus);
 }
 
+// 大量 sbrk 测试
 void
 sbrkmuch(char *s)
 {
@@ -2069,7 +2070,7 @@ sbrkmuch(char *s)
 
   oldbrk = sbrk(0);
 
-  // can one grow address space to something big?
+  // 地址空间能否增长到一个很大的值？
   a = sbrk(0);
   amt = BIG - (uint64)a;
   p = sbrk(amt);
@@ -2078,7 +2079,7 @@ sbrkmuch(char *s)
     exit(1);
   }
 
-  // touch each page to make sure it exists.
+  // 触摸每个页面以确保它存在。
   char *eee = sbrk(0);
   for(char *pp = a; pp < eee; pp += 4096)
     *pp = 1;
@@ -2086,7 +2087,7 @@ sbrkmuch(char *s)
   lastaddr = (char*) (BIG-1);
   *lastaddr = 99;
 
-  // can one de-allocate?
+  // 能否取消分配？
   a = sbrk(0);
   c = sbrk(-PGSIZE);
   if(c == (char*)0xffffffffffffffffL){
@@ -2099,7 +2100,7 @@ sbrkmuch(char *s)
     exit(1);
   }
 
-  // can one re-allocate that page?
+  // 能否重新分配那个页面？
   a = sbrk(0);
   c = sbrk(PGSIZE);
   if(c != a || sbrk(0) != a + PGSIZE){
@@ -2107,7 +2108,7 @@ sbrkmuch(char *s)
     exit(1);
   }
   if(*lastaddr == 99){
-    // should be zero
+    // 应该是零
     printf("%s: sbrk de-allocation didn't really deallocate\n", s);
     exit(1);
   }
@@ -2120,7 +2121,7 @@ sbrkmuch(char *s)
   }
 }
 
-// can we read the kernel's memory?
+// 我们能读取内核的内存吗？
 void
 kernmem(char *s)
 {
@@ -2139,12 +2140,12 @@ kernmem(char *s)
     }
     int xstatus;
     wait(&xstatus);
-    if(xstatus != -1)  // did kernel kill child?
+    if(xstatus != -1)  // 内核是否杀死了子进程？
       exit(1);
   }
 }
 
-// user code should not be able to write to addresses above MAXVA.
+// 用户代码不应能写入高于 MAXVA 的地址。
 void
 MAXVAplus(char *s)
 {
@@ -2163,13 +2164,12 @@ MAXVAplus(char *s)
     }
     int xstatus;
     wait(&xstatus);
-    if(xstatus != -1)  // did kernel kill child?
+    if(xstatus != -1)  // 内核是否杀死了子进程？
       exit(1);
   }
 }
 
-// if we run the system out of memory, does it clean up the last
-// failed allocation?
+// 如果我们用尽系统内存，它会清理最后一次失败的分配吗？
 void
 sbrkfail(char *s)
 {
@@ -2187,18 +2187,18 @@ sbrkfail(char *s)
   }
   for(i = 0; i < sizeof(pids)/sizeof(pids[0]); i++){
     if((pids[i] = fork()) == 0){
-      // allocate a lot of memory
+      // 分配大量内存
       sbrk(BIG - (uint64)sbrk(0));
       write(fds[1], "x", 1);
-      // sit around until killed
+      // 一直等待直到被杀死
       for(;;) sleep(1000);
     }
     if(pids[i] != -1)
       read(fds[0], &scratch, 1);
   }
 
-  // if those failed allocations freed up the pages they did allocate,
-  // we'll be able to allocate here
+  // 如果那些失败的分配释放了它们确实分配的页面，
+  // 我们将能够在这里分配
   c = sbrk(PGSIZE);
   for(i = 0; i < sizeof(pids)/sizeof(pids[0]); i++){
     if(pids[i] == -1)
@@ -2211,24 +2211,23 @@ sbrkfail(char *s)
     exit(1);
   }
 
-  // test running fork with the above allocated page 
+  // 测试在上述分配的页面上运行 fork
   pid = fork();
   if(pid < 0){
     printf("%s: fork failed\n", s);
     exit(1);
   }
   if(pid == 0){
-    // allocate a lot of memory.
-    // this should produce a page fault,
-    // and thus not complete.
+    // 分配大量内存。
+    // 这应该会产生一个页面错误，
+    // 因此不会完成。
     a = sbrk(0);
     sbrk(10*BIG);
     int n = 0;
     for (i = 0; i < 10*BIG; i += PGSIZE) {
       n += *(a+i);
     }
-    // print n so the compiler doesn't optimize away
-    // the for loop.
+    // 打印 n 以便编译器不会优化掉 for 循环。
     printf("%s: allocate a lot of memory succeeded %d\n", s, n);
     exit(1);
   }
@@ -2238,7 +2237,7 @@ sbrkfail(char *s)
 }
 
   
-// test reads/writes from/to allocated memory
+// 测试从/向已分配内存的读/写
 void
 sbrkarg(char *s)
 {
@@ -2258,7 +2257,7 @@ sbrkarg(char *s)
   }
   close(fd);
 
-  // test writes to allocated memory
+  // 测试写入已分配内存
   a = sbrk(PGSIZE);
   if(pipe((int *) a) != 0){
     printf("%s: pipe() failed\n", s);
@@ -2266,6 +2265,7 @@ sbrkarg(char *s)
   } 
 }
 
+// 验证测试
 void
 validatetest(char *s)
 {
@@ -2274,7 +2274,7 @@ validatetest(char *s)
 
   hi = 1100*1024;
   for(p = 0; p <= (uint)hi; p += PGSIZE){
-    // try to crash the kernel by passing in a bad string pointer
+    // 尝试通过传入一个坏的字符串指针来使内核崩溃
     if(link("nosuchfile", (char*)p) != -1){
       printf("%s: link should not succeed\n", s);
       exit(1);
@@ -2282,7 +2282,7 @@ validatetest(char *s)
   }
 }
 
-// does uninitialized data start out zero?
+// 未初始化的数据是否以零开始？
 char uninit[10000];
 void
 bsstest(char *s)
@@ -2297,9 +2297,8 @@ bsstest(char *s)
   }
 }
 
-// does exec return an error if the arguments
-// are larger than a page? or does it write
-// below the stack and wreck the instructions/data?
+// 如果参数大于一页，exec 是否返回错误？
+// 还是它会写在栈下面，破坏指令/数据？
 void
 bigargtest(char *s)
 {
@@ -2316,8 +2315,7 @@ bigargtest(char *s)
     for(i = 0; i < MAXARG-1; i++)
       args[i] = big;
     args[MAXARG-1] = 0;
-    // this exec() should fail (and return) because the
-    // arguments are too large.
+    // 这个 exec() 应该失败（并返回），因为参数太大了。
     exec("echo", args);
     fd = open("bigarg-ok", O_CREATE);
     close(fd);
@@ -2338,8 +2336,8 @@ bigargtest(char *s)
   close(fd);
 }
 
-// what happens when the file system runs out of blocks?
-// answer: balloc panics, so this test is not useful.
+// 当文件系统用完块时会发生什么？
+// 答案：balloc panic，所以这个测试没用。
 void
 fsfull()
 {
@@ -2391,6 +2389,7 @@ fsfull()
   printf("fsfull test finished\n");
 }
 
+// 参数指针测试
 void argptest(char *s)
 {
   int fd;
@@ -2403,8 +2402,8 @@ void argptest(char *s)
   close(fd);
 }
 
-// check that there's an invalid page beneath
-// the user stack, to catch stack overflow.
+// 检查用户栈下面是否有一个无效页面，
+// 以捕获堆栈溢出。
 void
 stacktest(char *s)
 {
@@ -2415,7 +2414,7 @@ stacktest(char *s)
   if(pid == 0) {
     char *sp = (char *) r_sp();
     sp -= USERSTACK*PGSIZE;
-    // the *sp should cause a trap.
+    // *sp 应该导致一个陷阱。
     printf("%s: stacktest: read below stack %d\n", s, *sp);
     exit(1);
   } else if(pid < 0){
@@ -2423,14 +2422,14 @@ stacktest(char *s)
     exit(1);
   }
   wait(&xstatus);
-  if(xstatus == -1)  // kernel killed child?
+  if(xstatus == -1)  // 内核杀死了子进程？
     exit(0);
   else
     exit(xstatus);
 }
 
-// check that writes to a few forbidden addresses
-// cause a fault, e.g. process's text and TRAMPOLINE.
+// 检查对一些禁止地址的写入是否会导致故障，
+// 例如进程的文本段和 TRAMPOLINE。
 void
 nowrite(char *s)
 {
@@ -2452,16 +2451,16 @@ nowrite(char *s)
     }
     wait(&xstatus);
     if(xstatus == 0){
-      // kernel did not kill child!
+      // 内核没有杀死子进程！
       exit(1);
     }
   }
   exit(0);
 }
 
-// regression test. copyin(), copyout(), and copyinstr() used to cast
-// the virtual page address to uint, which (with certain wild system
-// call arguments) resulted in a kernel page faults.
+// 回归测试。copyin()、copyout() 和 copyinstr() 过去将
+// 虚拟页面地址转换为 uint，这（在某些疯狂的系统调用参数下）
+// 导致内核页面错误。
 void *big = (void*) 0xeaeb0b5b00002f5e;
 void
 pgbug(char *s)
@@ -2474,9 +2473,9 @@ pgbug(char *s)
   exit(0);
 }
 
-// regression test. does the kernel panic if a process sbrk()s its
-// size to be less than a page, or zero, or reduces the break by an
-// amount too small to cause a page to be freed?
+// 回归测试。如果一个进程 sbrk() 其大小
+// 小于一页，或为零，或者减少 break 的量太小
+// 不足以导致页面被释放，内核会恐慌吗？
 void
 sbrkbugs(char *s)
 {
@@ -2487,11 +2486,11 @@ sbrkbugs(char *s)
   }
   if(pid == 0){
     int sz = (uint64) sbrk(0);
-    // free all user memory; there used to be a bug that
-    // would not adjust p->sz correctly in this case,
-    // causing exit() to panic.
+    // 释放所有用户内存；过去有一个 bug
+    // 在这种情况下不会正确调整 p->sz，
+    // 导致 exit() 恐慌。
     sbrk(-sz);
-    // user page fault here.
+    // 这里用户页面错误。
     exit(0);
   }
   wait(0);
@@ -2503,9 +2502,8 @@ sbrkbugs(char *s)
   }
   if(pid == 0){
     int sz = (uint64) sbrk(0);
-    // set the break to somewhere in the very first
-    // page; there used to be a bug that would incorrectly
-    // free the first page.
+    // 将 break 设置到第一个页面的某个位置；
+    // 过去有一个 bug 会错误地释放第一个页面。
     sbrk(-(sz - 3500));
     exit(0);
   }
@@ -2517,12 +2515,11 @@ sbrkbugs(char *s)
     exit(1);
   }
   if(pid == 0){
-    // set the break in the middle of a page.
+    // 将 break 设置在页面的中间。
     sbrk((10*4096 + 2048) - (uint64)sbrk(0));
 
-    // reduce the break a bit, but not enough to
-    // cause a page to be freed. this used to cause
-    // a panic.
+    // 稍微减少 break，但不足以
+    // 导致页面被释放。这过去会导致恐慌。
     sbrk(-10);
 
     exit(0);
@@ -2532,9 +2529,9 @@ sbrkbugs(char *s)
   exit(0);
 }
 
-// if process size was somewhat more than a page boundary, and then
-// shrunk to be somewhat less than that page boundary, can the kernel
-// still copyin() from addresses in the last page?
+// 如果进程大小略大于页面边界，然后
+// 缩小到略小于该页面边界，内核是否
+// 仍然可以从最后一页的地址 copyin()？
 void
 sbrklast(char *s)
 {
@@ -2558,9 +2555,7 @@ sbrklast(char *s)
     exit(1);
 }
 
-
-// does sbrk handle signed int32 wrap-around with
-// negative arguments?
+// sbrk 是否处理带负参数的 signed int32 环绕？
 void
 sbrk8000(char *s)
 {
@@ -2571,8 +2566,8 @@ sbrk8000(char *s)
 
 
 
-// regression test. test whether exec() leaks memory if one of the
-// arguments is invalid. the test passes if the kernel doesn't panic.
+// 回归测试。测试如果其中一个参数无效，exec() 是否泄漏内存。
+// 如果内核不恐慌，则测试通过。
 void
 badarg(char *s)
 {
@@ -2586,6 +2581,7 @@ badarg(char *s)
   exit(0);
 }
 
+// 快速测试列表
 struct test {
   void (*f)(char *);
   char *s;
@@ -2655,10 +2651,10 @@ struct test {
 };
 
 //
-// Section with tests that take a fair bit of time
+// 耗时较长的测试部分
 //
 
-// directory that uses indirect blocks
+// 使用间接块的目录
 void
 bigdir(char *s)
 {
@@ -2699,13 +2695,12 @@ bigdir(char *s)
   }
 }
 
-// concurrent writes to try to provoke deadlock in the virtio disk
-// driver.
+// 并发写入以尝试在 virtio 磁盘驱动程序中引发死锁。
 void
 manywrites(char *s)
 {
   int nchildren = 4;
-  int howmany = 30; // increase to look for deadlock
+  int howmany = 30; // 增加以查找死锁
   
   for(int ci = 0; ci < nchildren; ci++){
     int pid = fork();
@@ -2753,11 +2748,11 @@ manywrites(char *s)
   exit(0);
 }
 
-// regression test. does write() with an invalid buffer pointer cause
-// a block to be allocated for a file that is then not freed when the
-// file is deleted? if the kernel has this bug, it will panic: balloc:
-// out of blocks. assumed_free may need to be raised to be more than
-// the number of free blocks. this test takes a long time.
+// 回归测试。带有无效缓冲区指针的 write() 是否会导致
+// 为文件分配一个块，然后在文件被删除时该块未被释放？
+// 如果内核存在此 bug，它将 panic: balloc: out of blocks。
+// assumed_free 可能需要提高到大于空闲块的数量。
+// 此测试需要很长时间。
 void
 badwrite(char *s)
 {
@@ -2790,9 +2785,8 @@ badwrite(char *s)
   exit(0);
 }
 
-// test the exec() code that cleans up if it runs out
-// of memory. it's really a test that such a condition
-// doesn't cause a panic.
+// 测试 exec() 代码在内存不足时进行清理。
+// 这实际上是测试这种情况不会导致 panic。
 void
 execout(char *s)
 {
@@ -2802,7 +2796,7 @@ execout(char *s)
       printf("fork failed\n");
       exit(1);
     } else if(pid == 0){
-      // allocate all of memory.
+      // 分配所有内存。
       while(1){
         uint64 a = (uint64) sbrk(4096);
         if(a == 0xffffffffffffffffLL)
@@ -2810,8 +2804,7 @@ execout(char *s)
         *(char*)(a + 4096 - 1) = 1;
       }
 
-      // free a few pages, in order to let exec() make some
-      // progress.
+      // 释放几个页面，以便让 exec() 取得一些进展。
       for(int i = 0; i < avail; i++)
         sbrk(-4096);
       
@@ -2827,7 +2820,7 @@ execout(char *s)
   exit(0);
 }
 
-// can the kernel tolerate running out of disk space?
+// 内核能容忍磁盘空间用完吗？
 void
 diskfull(char *s)
 {
@@ -2846,7 +2839,7 @@ diskfull(char *s)
     unlink(name);
     int fd = open(name, O_CREATE|O_RDWR|O_TRUNC);
     if(fd < 0){
-      // oops, ran out of inodes before running out of blocks.
+      // 糟糕，在用完块之前用完了 inode。
       printf("%s: could not create file %s\n", s, name);
       done = 1;
       break;
@@ -2862,10 +2855,9 @@ diskfull(char *s)
     close(fd);
   }
 
-  // now that there are no free blocks, test that dirlink()
-  // merely fails (doesn't panic) if it can't extend
-  // directory content. one of these file creations
-  // is expected to fail.
+  // 现在没有空闲块了，测试 dirlink()
+  // 在无法扩展目录内容时仅失败（不 panic）。
+  // 预期其中一个文件创建会失败。
   int nzz = 128;
   for(int i = 0; i < nzz; i++){
     char name[32];
@@ -2881,7 +2873,7 @@ diskfull(char *s)
     close(fd);
   }
 
-  // this mkdir() is expected to fail.
+  // 这个 mkdir() 预期会失败。
   if(mkdir("diskfulldir") == 0)
     printf("%s: mkdir(diskfulldir) unexpectedly succeeded!\n", s);
 
@@ -2908,6 +2900,7 @@ diskfull(char *s)
   }
 }
 
+// inode 用尽测试
 void
 outofinodes(char *s)
 {
@@ -2922,7 +2915,7 @@ outofinodes(char *s)
     unlink(name);
     int fd = open(name, O_CREATE|O_RDWR|O_TRUNC);
     if(fd < 0){
-      // failure is eventually expected.
+      // 最终预期会失败。
       break;
     }
     close(fd);
@@ -2939,6 +2932,7 @@ outofinodes(char *s)
   }
 }
 
+// 慢速测试列表
 struct test slowtests[] = {
   {bigdir, "bigdir"},
   {manywrites, "manywrites"},
@@ -2951,11 +2945,11 @@ struct test slowtests[] = {
 };
 
 //
-// drive tests
+// 驱动测试
 //
 
-// run each test in its own process. run returns 1 if child's exit()
-// indicates success.
+// 在其自己的进程中运行每个测试。如果子进程的 exit()
+// 表示成功，则 run 返回 1。
 int
 run(void f(char *), char *s) {
   int pid;
@@ -2979,6 +2973,7 @@ run(void f(char *), char *s) {
   }
 }
 
+// 运行测试集
 int
 runtests(struct test *tests, char *justone, int continuous) {
   for (struct test *t = tests; t->s != 0; t++) {
@@ -2996,10 +2991,10 @@ runtests(struct test *tests, char *justone, int continuous) {
 
 
 //
-// use sbrk() to count how many free physical memory pages there are.
-// touches the pages to force allocation.
-// because out of memory with lazy allocation results in the process
-// taking a fault and being killed, fork and report back.
+// 使用 sbrk() 来计算有多少空闲物理内存页。
+// 触摸页面以强制分配。
+// 因为内存不足时懒分配会导致进程
+// 发生故障并被杀死，所以 fork 并报告回来。
 //
 int
 countfree()
@@ -3027,10 +3022,10 @@ countfree()
         break;
       }
 
-      // modify the memory to make sure it's really allocated.
+      // 修改内存以确保它真的被分配了。
       *(char *)(a + 4096 - 1) = 1;
 
-      // report back one more page.
+      // 报告多一页。
       if(write(fds[1], "x", 1) != 1){
         printf("write() failed in countfree()\n");
         exit(1);
@@ -3061,6 +3056,7 @@ countfree()
   return n;
 }
 
+// 主测试驱动程序
 int
 drivetests(int quick, int continuous, char *justone) {
   do {
@@ -3091,6 +3087,7 @@ drivetests(int quick, int continuous, char *justone) {
   return 0;
 }
 
+// 主函数
 int
 main(int argc, char *argv[])
 {

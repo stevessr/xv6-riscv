@@ -1,5 +1,5 @@
 //
-// run random system calls in parallel forever.
+// 无限期地并行运行随机系统调用。
 //
 
 #include "kernel/param.h"
@@ -12,28 +12,28 @@
 #include "kernel/memlayout.h"
 #include "kernel/riscv.h"
 
-// from FreeBSD.
+// 来自 FreeBSD 的随机数生成器。
 int
 do_rand(unsigned long *ctx)
 {
 /*
- * Compute x = (7^5 * x) mod (2^31 - 1)
- * without overflowing 31 bits:
+ * 计算 x = (7^5 * x) mod (2^31 - 1)
+ * 且不溢出 31 位：
  *      (2^31 - 1) = 127773 * (7^5) + 2836
- * From "Random number generators: good ones are hard to find",
+ * 来自 "Random number generators: good ones are hard to find",
  * Park and Miller, Communications of the ACM, vol. 31, no. 10,
  * October 1988, p. 1195.
  */
     long hi, lo, x;
 
-    /* Transform to [1, 0x7ffffffe] range. */
+    /* 转换到 [1, 0x7ffffffe] 范围。 */
     x = (*ctx % 0x7ffffffe) + 1;
     hi = x / 127773;
     lo = x % 127773;
     x = 16807 * lo - 2836 * hi;
     if (x < 0)
         x += 0x7fffffff;
-    /* Transform to [0, 0x7ffffffd] range. */
+    /* 转换到 [0, 0x7ffffffd] 范围。 */
     x--;
     *ctx = x;
     return (x);
@@ -47,6 +47,7 @@ rand(void)
     return (do_rand(&rand_next));
 }
 
+// 子进程执行的函数
 void
 go(int which_child)
 {
@@ -194,8 +195,8 @@ go(int which_child)
       wait(0);
     } else if(what == 21){
       unlink("c");
-      // should always succeed. check that there are free i-nodes,
-      // file descriptors, blocks.
+      // 应该总是成功。检查是否有空闲的 i-node、
+      // 文件描述符、块。
       int fd1 = open("c", O_CREATE|O_RDWR);
       if(fd1 < 0){
         printf("grind: create c failed\n");

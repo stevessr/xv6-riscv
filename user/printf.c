@@ -4,14 +4,17 @@
 
 #include <stdarg.h>
 
+// 数字字符数组
 static char digits[] = "0123456789ABCDEF";
 
+// 向文件描述符 fd 写入一个字符 c
 static void
 putc(int fd, char c)
 {
   write(fd, &c, 1);
 }
 
+// 打印整数
 static void
 printint(int fd, long long xx, int base, int sgn)
 {
@@ -38,6 +41,7 @@ printint(int fd, long long xx, int base, int sgn)
     putc(fd, buf[i]);
 }
 
+// 打印指针
 static void
 printptr(int fd, uint64 x) {
   int i;
@@ -47,7 +51,7 @@ printptr(int fd, uint64 x) {
     putc(fd, digits[x >> (sizeof(uint64) * 8 - 4)]);
 }
 
-// Print to the given fd. Only understands %d, %x, %p, %s.
+// 格式化输出到给定的文件描述符。只支持 %d, %x, %p, %s。
 void
 vprintf(int fd, const char *fmt, va_list ap)
 {
@@ -101,7 +105,7 @@ vprintf(int fd, const char *fmt, va_list ap)
       } else if(c0 == '%'){
         putc(fd, '%');
       } else {
-        // Unknown % sequence.  Print it to draw attention.
+        // 未知的 % 序列。打印出来以引起注意。
         putc(fd, '%');
         putc(fd, c0);
       }
@@ -138,6 +142,7 @@ vprintf(int fd, const char *fmt, va_list ap)
   }
 }
 
+// 带文件描述符的 printf
 void
 fprintf(int fd, const char *fmt, ...)
 {
@@ -147,6 +152,7 @@ fprintf(int fd, const char *fmt, ...)
   vprintf(fd, fmt, ap);
 }
 
+// 标准 printf
 void
 printf(const char *fmt, ...)
 {
