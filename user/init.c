@@ -1,4 +1,4 @@
-// init: The initial user-level program
+// 初始化: 这是初始化的用户态程序
 
 #include "kernel/types.h"
 #include "kernel/stat.h"
@@ -25,16 +25,16 @@ main(void)
   dup(0);  // 标准错误
 
   for(;;){
-    printf("init: starting sh\n");
+    printf("初始化: 启动· sh\n");
     pid = fork();
     if(pid < 0){
-      printf("init: fork failed\n");
+      printf("初始化: fork 失败\n");
       exit(1);
     }
     if(pid == 0){
       // 子进程执行 shell
       exec("sh", argv);
-      printf("init: exec sh failed\n");
+      printf("初始化: exec sh 失败\n");
       exit(1);
     }
 
@@ -45,7 +45,7 @@ main(void)
         // shell 退出了；重启它。
         break;
       } else if(wpid < 0){
-        printf("init: wait returned an error\n");
+        printf("初始化: wait returned an error\n");
         exit(1);
       } else {
         // 这是一个没有父进程的进程；什么也不做。

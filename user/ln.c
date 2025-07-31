@@ -11,7 +11,7 @@ main(int argc, char *argv[])
 {
   // 如果参数不等于 3 个，则打印用法并退出
   if(argc != 3){
-    fprintf(2, "Usage: ln old new\n");
+    fprintf(2, "用法: ln old new\n");
     exit(1);
   }
   // 创建硬链接

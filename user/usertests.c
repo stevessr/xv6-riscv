@@ -3104,7 +3104,7 @@ main(int argc, char *argv[])
   } else if(argc == 2 && argv[1][0] != '-'){
     justone = argv[1];
   } else if(argc > 1){
-    printf("Usage: usertests [-c] [-C] [-q] [testname]\n");
+    printf("用法: usertests [-c] [-C] [-q] [testname]\n");
     exit(1);
   }
   if (drivetests(quick, continuous, justone)) {

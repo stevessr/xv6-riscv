@@ -98,3 +98,11 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// sys_shutdown 系统调用：关闭系统
+uint64
+sys_shutdown(void)
+{
+  shutdown();
+  return 0; // 不会执行到这里
+}

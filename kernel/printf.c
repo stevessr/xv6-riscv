@@ -200,7 +200,7 @@ void
 panic(char *s)
 {
   pr.locking = 0; // 禁用锁，因为此时系统状态不稳定
-  printf("panic: ");
+  printf("内核恐慌: ");
   printf("%s\n", s);
   panicked = 1; // 设置 panic 标志，以冻结其他 CPU 上的 UART 输出
   for(;;) // 进入无限循环，停止系统

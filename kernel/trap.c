@@ -171,7 +171,7 @@ kerneltrap()
 
   if((which_dev = devintr()) == 0){
     // 非设备中断（例如异常）。
-    printf("scause=0x%lx sepc=0x%lx stval=0x%lx\n", scause, r_sepc(), r_stval());
+    printf("scause(管理者原因寄存器)=0x%lx \nsepc(管理者异常程序计数器)=0x%lx \nstval(管理者陷阱值寄存器)=0x%lx\n", scause, r_sepc(), r_stval());
     panic("kerneltrap");
   }
 

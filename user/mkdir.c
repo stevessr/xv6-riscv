@@ -13,7 +13,7 @@ main(int argc, char *argv[])
 
   // 如果参数少于 2 个，则打印用法并退出
   if(argc < 2){
-    fprintf(2, "Usage: mkdir files...\n");
+    fprintf(2, "用法: mkdir files...\n");
     exit(1);
   }
 

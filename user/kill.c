@@ -13,7 +13,7 @@ main(int argc, char **argv)
 
   // 如果参数少于 2 个，则打印用法并退出
   if(argc < 2){
-    fprintf(2, "usage: kill pid...\n");
+    fprintf(2, "用法: kill pid...\n");
     exit(1);
   }
   // 遍历所有参数（PID）并调用 kill

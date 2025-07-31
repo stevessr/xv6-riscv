@@ -53,7 +53,7 @@ main(int argc, char *argv[])
 
   // 参数检查
   if(argc <= 1){
-    fprintf(2, "usage: grep pattern [file ...]\n");
+    fprintf(2, "用法: grep pattern [file ...]\n");
     exit(1);
   }
   pattern = argv[1];

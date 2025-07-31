@@ -20,3 +20,4 @@
 #define SYS_link    19  // 创建一个文件的硬链接
 #define SYS_mkdir   20  // 创建一个目录
 #define SYS_close   21  // 关闭一个文件
+#define SYS_shutdown 22  // 关闭系统

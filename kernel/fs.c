@@ -82,7 +82,7 @@ balloc(uint dev)
     }
     brelse(bp);
   }
-  printf("balloc: out of blocks\n");
+  printf("balloc: 无块可用\n");
   return 0;
 }
 
@@ -97,7 +97,7 @@ bfree(int dev, uint b)
   bi = b % BPB;
   m = 1 << (bi % 8);
   if((bp->data[bi/8] & m) == 0)
-    panic("freeing free block");
+    panic("释放 自由 块");
   bp->data[bi/8] &= ~m; // 清除位图中的相应位
   log_write(bp);
   brelse(bp);

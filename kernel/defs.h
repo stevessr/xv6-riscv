@@ -185,5 +185,8 @@ void            virtio_disk_init(void);
 void            virtio_disk_rw(struct buf *, int);
 void            virtio_disk_intr(void);
 
+// 系统关机函数
+void            shutdown(void);
+
 // 计算定长数组元素个数
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
