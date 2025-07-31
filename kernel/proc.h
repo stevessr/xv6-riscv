@@ -78,6 +78,7 @@ struct trapframe {
   /* 280 */ uint64 t6;
 };
 
+//线程状态
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // 每个进程的状态
