@@ -54,6 +54,9 @@ kvmmake(void)
 
   // 映射内核数据段和剩余的所有物理内存，权限为可读、可写。
   kvmmap(kpgtbl, (uint64)etext, (uint64)etext, PHYSTOP-(uint64)etext, PTE_R | PTE_W);
+  
+  // 映射 QEMU 关机设备地址 (0x100000)
+  kvmmap(kpgtbl, 0x100000, 0x100000, PGSIZE, PTE_R | PTE_W);
 
   // 将跳板页映射到内核虚拟地址空间的最高处。
   // 这个页面同时也会被映射到每个用户进程的虚拟地址空间中。
