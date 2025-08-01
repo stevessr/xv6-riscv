@@ -63,6 +63,9 @@ kvmmake(void)
   // 映射 virtio MMIO (内存映射 I/O) 磁盘接口。
   kvmmap(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
 
+  // 映射 SiFive 测试设备，用于关机
+  kvmmap(kpgtbl, SIFIVE_TEST, SIFIVE_TEST, PGSIZE, PTE_R | PTE_W);
+
   // 映射 PLIC (平台级中断控制器)。
   // PLIC 的地址空间较大，这里映射了 0x400000 字节。
   kvmmap(kpgtbl, PLIC, PLIC, 0x400000, PTE_R | PTE_W);

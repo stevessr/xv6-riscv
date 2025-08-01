@@ -26,6 +26,9 @@
 #define VIRTIO0 0x10001000
 #define VIRTIO0_IRQ 1
 
+// QEMU test-finisher anordnen
+#define SIFIVE_TEST 0x100000
+
 // CLINT (核心本地中断器) 寄存器物理地址
 #define CLINT 0x2000000L
 #define CLINT_MTIMECMP(hartid) (CLINT + 0x4000 + 8*(hartid))
