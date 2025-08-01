@@ -148,6 +148,7 @@ UPROGS=\
 	$U/_rm\
 	$U/_sh\
 	$U/_shutdown\
+	$U/_reboot\
 	$U/_sleep\
 	$U/_stressfs\
 	$U/_usertests\

@@ -150,3 +150,13 @@ sys_shutdown(void)
   shutdown();
   return 0; // shutdown 不会返回。
 }
+
+// sys_reboot 系统调用：重启 QEMU。
+// 这是一个 xv6 特有的、非标准的系统调用，用于方便地重启模拟器。
+uint64
+sys_reboot(void)
+{
+  // 调用在 power.c 中定义的 reboot 函数。
+  reboot();
+  return 0; // reboot 不会返回。
+}

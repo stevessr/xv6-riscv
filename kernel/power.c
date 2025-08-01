@@ -20,6 +20,7 @@ shutdown(void)
   // 更多信息请参考 QEMU 文档中关于 'sifive_test' 设备的部分。
   #define QEMU_POWEROFF_ADDR ((volatile uint32 *)0x100000)
   #define QEMU_POWEROFF_VALUE 0x5555
+  #define QEMU_REBOOT_VALUE 0x7777
   
   // 向 QEMU 关机设备地址写入关机指令值。
   *QEMU_POWEROFF_ADDR = QEMU_POWEROFF_VALUE;
@@ -34,6 +35,28 @@ shutdown(void)
     // 在这里，由于中断在关机流程中通常是禁用的，
     // 'wfi' 会使 CPU 进入一个深度睡眠的低功耗状态，并且不会被唤醒。
     // 这有效地停止了 CPU 的活动。
+    asm volatile("wfi");
+  }
+}
+
+// reboot() - 重启系统
+//
+// 该函数用于安全地重启在 QEMU 中运行的 xv6 系统。
+void
+reboot(void)
+{
+  printf("系统正在重启...\n");
+  
+  // 使用 QEMU 的调试设备来触发重启。
+  // 向物理地址 0x100000 写入值 0x7777
+  // 是 QEMU virt 虚拟化平台约定的重启命令。
+  #define QEMU_REBOOT_ADDR ((volatile uint32 *)0x100000)
+  
+  // 向 QEMU 重启设备地址写入重启指令值。
+  *QEMU_REBOOT_ADDR = QEMU_REBOOT_VALUE;
+  
+  // 如果重启失败，也进入无限循环。
+  for(;;) {
     asm volatile("wfi");
   }
 }

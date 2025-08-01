@@ -97,3 +97,5 @@
 
 // shutdown() 关闭系统。这是一个xv6特有的系统调用，用于测试或关闭虚拟机。
 #define SYS_shutdown 22
+// reboot() 重启系统
+#define SYS_reboot 23

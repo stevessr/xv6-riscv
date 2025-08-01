@@ -24,6 +24,7 @@ char* sbrk(int); // 增长进程内存
 int sleep(int); // 暂停指定的ticks
 int uptime(void); // 获取系统自启动以来的ticks
 int shutdown(void); // 关闭系统
+int reboot(void); // 重启系统
 
 // ulib.c
 int stat(const char*, struct stat*); // 获取文件状态

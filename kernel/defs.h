@@ -187,6 +187,7 @@ void            virtio_disk_intr(void); // virtio 磁盘中断处理函数
 
 // 系统关机函数
 void            shutdown(void); // 关闭系统
+void            reboot(void);   // 重启系统
 
 // 计算定长数组元素个数
 #define NELEM(x) (sizeof(x)/sizeof((x)[0])) // 计算一个静态数组的元素个数

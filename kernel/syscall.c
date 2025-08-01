@@ -127,6 +127,7 @@ extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 extern uint64 sys_shutdown(void);
+extern uint64 sys_reboot(void);
 
 // 系统调用处理函数指针数组。
 // `syscall.h` 中定义的系统调用号 (例如 `SYS_fork`) 作为该数组的索引，
@@ -154,6 +155,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_shutdown] sys_shutdown,
+[SYS_reboot]   sys_reboot,
 };
 
 // 系统调用分发函数。
