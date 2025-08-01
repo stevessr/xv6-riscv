@@ -13,19 +13,29 @@
 #include "stat.h"
 #include "proc.h"
 
-struct devsw devsw[NDEV]; // 设备驱动表
+// 设备驱动表，`devsw[i]` 包含主设备号 `i` 的驱动函数
+struct devsw devsw[NDEV];
+
+// 全局文件表 (ftable)。
+// 这是系统中所有打开文件的池。
+// `ftable.lock` 保护该表，确保并发访问的安全性。
+// `ftable.file` 是一个包含 `NFILE` 个 `struct file` 的数组。
 struct {
-  struct spinlock lock;     // 保护文件表
-  struct file file[NFILE];  // 文件表
+  struct spinlock lock;
+  struct file file[NFILE];
 } ftable;
 
+// 初始化全局文件表锁
 void
 fileinit(void)
 {
-  initlock(&ftable.lock, "ftable"); // 初始化文件表锁
+  initlock(&ftable.lock, "ftable");
 }
 
-// 分配一个文件结构体。
+// 分配一个文件结构体 (struct file)。
+// 这是在内核中打开一个新文件的第一步。
+// 它会在全局文件表 `ftable` 中查找一个未被使用的 `struct file`。
+// @return: 成功时返回一个指向 `struct file` 的指针，失败时返回 0。
 struct file*
 filealloc(void)
 {
@@ -33,8 +43,8 @@ filealloc(void)
 
   acquire(&ftable.lock);
   for(f = ftable.file; f < ftable.file + NFILE; f++){
-    if(f->ref == 0){ // 找到一个空闲的文件结构体
-      f->ref = 1; // 增加引用计数
+    if(f->ref == 0){ // 找到一个空闲的文件结构体 (引用计数为 0)
+      f->ref = 1;      // 将其标记为已使用 (引用计数设为 1)
       release(&ftable.lock);
       return f;
     }
@@ -44,6 +54,10 @@ filealloc(void)
 }
 
 // 增加文件 f 的引用计数。
+// 当一个文件描述符被复制时（例如 `dup()` 或 `fork()`），会调用此函数。
+// 这允许多个文件描述符指向同一个 `struct file`。
+// @param f: 要增加引用计数的文件结构体。
+// @return: 返回指向同一个文件结构体的指针 `f`。
 struct file*
 filedup(struct file *f)
 {
@@ -55,36 +69,44 @@ filedup(struct file *f)
   return f;
 }
 
-// 关闭文件 f。（减少引用计数，当引用计数为 0 时关闭。）
+// 关闭文件 f。
+// 这会减少文件的引用计数。如果引用计数降至 0，
+// 则会释放底层的资源（如 inode 或管道）。
+// @param f: 要关闭的文件结构体。
 void
 fileclose(struct file *f)
 {
-  struct file ff;
+  struct file ff; // 用于临时保存文件信息的副本
 
   acquire(&ftable.lock);
   if(f->ref < 1)
     panic("fileclose");
-  if(--f->ref > 0){ // 还有其他引用，直接返回
+  if(--f->ref > 0){ // 如果还有其他引用，则仅减少引用计数
     release(&ftable.lock);
     return;
   }
-  // 引用计数为 0，真正关闭文件
+  // 如果引用计数为 0，则这是最后一个引用，需要真正关闭文件
   ff = *f;
   f->ref = 0;
-  f->type = FD_NONE;
+  f->type = FD_NONE; // 重置文件类型
   release(&ftable.lock);
 
-  if(ff.type == FD_PIPE){ // 如果是管道文件
+  if(ff.type == FD_PIPE){
+    // 如果是管道文件，关闭管道
     pipeclose(ff.pipe, ff.writable);
-  } else if(ff.type == FD_INODE || ff.type == FD_DEVICE){ // 如果是 inode 或设备文件
+  } else if(ff.type == FD_INODE || ff.type == FD_DEVICE){
+    // 如果是 inode 或设备文件，释放 inode
+    // `begin_op`/`end_op` 用于确保 inode 操作的原子性
     begin_op();
-    iput(ff.ip); // 释放 inode
+    iput(ff.ip);
     end_op();
   }
 }
 
-// 获取文件 f 的元数据。
-// addr 是一个用户虚拟地址，指向一个 struct stat。
+// 获取文件 f 的状态信息 (元数据)。
+// @param f: 要获取状态的文件。
+// @param addr: 指向用户空间 `struct stat` 的地址，用于存储结果。
+// @return: 成功时返回 0，失败时返回 -1。
 int
 filestat(struct file *f, uint64 addr)
 {
@@ -93,7 +115,7 @@ filestat(struct file *f, uint64 addr)
   
   if(f->type == FD_INODE || f->type == FD_DEVICE){
     ilock(f->ip);
-    stati(f->ip, &st); // 获取 inode 的状态信息
+    stati(f->ip, &st); // 从 inode 中读取状态信息
     iunlock(f->ip);
     // 将状态信息复制到用户空间
     if(copyout(p->pagetable, addr, (char *)&st, sizeof(st)) < 0)
@@ -104,13 +126,16 @@ filestat(struct file *f, uint64 addr)
 }
 
 // 从文件 f 读取数据。
-// addr 是一个用户虚拟地址。
+// @param f: 要读取的文件。
+// @param addr: 存储读取数据的用户空间缓冲区的地址。
+// @param n: 要读取的字节数。
+// @return: 返回读取的字节数；如果出错则返回 -1。
 int
 fileread(struct file *f, uint64 addr, int n)
 {
   int r = 0;
 
-  if(f->readable == 0) // 文件不可读
+  if(f->readable == 0)
     return -1;
 
   if(f->type == FD_PIPE){
@@ -121,8 +146,9 @@ fileread(struct file *f, uint64 addr, int n)
     r = devsw[f->major].read(1, addr, n);
   } else if(f->type == FD_INODE){
     ilock(f->ip);
+    // 从 inode 读取数据，并更新文件偏移量
     if((r = readi(f->ip, 1, addr, f->off, n)) > 0)
-      f->off += r; // 更新文件偏移量
+      f->off += r;
     iunlock(f->ip);
   } else {
     panic("fileread");
@@ -132,13 +158,16 @@ fileread(struct file *f, uint64 addr, int n)
 }
 
 // 向文件 f 写入数据。
-// addr 是一个用户虚拟地址。
+// @param f: 要写入的文件。
+// @param addr: 包含要写入数据的用户空间缓冲区的地址。
+// @param n: 要写入的字节数。
+// @return: 返回写入的字节数；如果出错则返回 -1。
 int
 filewrite(struct file *f, uint64 addr, int n)
 {
   int r, ret = 0;
 
-  if(f->writable == 0) // 文件不可写
+  if(f->writable == 0)
     return -1;
 
   if(f->type == FD_PIPE){
@@ -148,11 +177,8 @@ filewrite(struct file *f, uint64 addr, int n)
       return -1;
     ret = devsw[f->major].write(1, addr, n);
   } else if(f->type == FD_INODE){
-    // 为了避免超出最大日志事务大小，一次写入几个块。
-    // 这包括 i-node、间接块、分配块，
-    // 以及为非对齐写入准备的 2 个块的余量。
-    // 这个逻辑实际上应该放在更底层，因为 writei()
-    // 可能正在写入像控制台这样的设备。
+    // 为了避免超出单个日志事务的大小，分块写入。
+    // `MAXOPBLOCKS` 限制了单个事务中可以包含的块数。
     int max = ((MAXOPBLOCKS-1-1-2) / 2) * BSIZE;
     int i = 0;
     while(i < n){
@@ -162,13 +188,14 @@ filewrite(struct file *f, uint64 addr, int n)
 
       begin_op();
       ilock(f->ip);
+      // 向 inode 写入数据，并更新文件偏移量
       if ((r = writei(f->ip, 1, addr + i, f->off, n1)) > 0)
-        f->off += r; // 更新文件偏移量
+        f->off += r;
       iunlock(f->ip);
       end_op();
 
       if(r != n1){
-        // writei 出错
+        // `writei` 发生错误或写入的字节数少于预期
         break;
       }
       i += r;

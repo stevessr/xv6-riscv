@@ -1,12 +1,29 @@
+// `struct buf` 代表一个缓冲区，它缓存了磁盘块的内容。
+// 内核通过缓冲区缓存来减少磁盘访问，提高 I/O 性能。
+// 当内核需要读取或写入一个磁盘块时，它首先在缓冲区缓存中查找。
+// 如果找到，就可以直接操作内存中的数据，避免了昂贵的磁盘操作。
 struct buf {
-  int valid;   // 数据是否已从磁盘读取？
-  int disk;    // 磁盘是否“拥有”该缓冲区？
-  uint dev;
-  uint blockno;
-  struct sleeplock lock;
-  uint refcnt;
-  struct buf *prev; // LRU 缓存列表
-  struct buf *next;
-  uchar data[BSIZE];
-};
+  int valid;   // `valid` 标志位表示缓冲区中的数据是否已经从磁盘中成功读入。
+               // 0 表示数据无效（例如，缓冲区是新分配的），1 表示数据有效。
+  int disk;    // `disk` 标志位表示内核是否正在与磁盘就此缓冲区进行通信。
+               // 例如，在调用 `virtio_disk_rw()` 时会设置此位，以防止其他进程使用该缓冲区。
 
+  uint dev;     // `dev` 字段表示设备号（例如，主设备号或次设备号），标识块所在的存储设备。
+  uint blockno; // `blockno` 是设备上的块编号，唯一标识一个磁盘块。
+
+  struct sleeplock lock; // `lock` 是一个休眠锁，用于实现对缓冲区的互斥访问。
+                        // 任何时候只有一个进程可以持有某个缓冲区的锁，从而防止竞争条件。
+                        // 当一个进程需要等待 I/O 操作完成时，它会释放 CPU 并在此锁上休眠。
+
+  uint refcnt;  // `refcnt` (reference count) 是引用计数器，记录了当前有多少个内核线程正在使用这个缓冲区。
+               // 当一个线程开始使用缓冲区时，引用计数加一。使用完毕后，减一。
+               // 只有当 `refcnt` 为 0 时，这个缓冲区才能被回收并用于缓存其他磁盘块。
+
+  struct buf *prev; // `prev` 指针用于将缓冲区链接成一个双向链表（通常是 LRU 链表）。
+                    // 指向链表中的前一个缓冲区。
+  struct buf *next; // `next` 指针，指向链表中的后一个缓冲区。
+                    // LRU（最近最少使用）算法通过这个链表来决定哪些缓冲区可以被优先回收。
+
+  uchar data[BSIZE]; // `data` 是一个字节数组，大小为 `BSIZE` (block size)。
+                     // 它实际存储了从磁盘读取的块数据或将要写入磁盘的数据。
+};
