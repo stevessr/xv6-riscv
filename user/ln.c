@@ -16,7 +16,7 @@ main(int argc, char *argv[])
   }
   // 创建硬链接
   if(link(argv[1], argv[2]) < 0)
-    fprintf(2, "link %s %s: failed\n", argv[1], argv[2]);
+    fprintf(2, "link %s %s: 失败\n", argv[1], argv[2]);
   // 正常退出
   exit(0);
 }

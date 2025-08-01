@@ -20,7 +20,7 @@ main(int argc, char *argv[])
   // 遍历所有参数（目录名）并创建目录
   for(i = 1; i < argc; i++){
     if(mkdir(argv[i]) < 0){
-      fprintf(2, "mkdir: %s failed to create\n", argv[i]);
+      fprintf(2, "mkdir: %s 失败 to create\n", argv[i]);
       break;
     }
   }

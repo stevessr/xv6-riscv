@@ -43,6 +43,7 @@ sbi_call(uint64 which, uint64 arg0, uint64 arg1, uint64 arg2)
 void
 main()
 {
+  extern const char build_hash[];
   // `cpuid()` 返回当前硬件线程（hart）的 ID。
   // hart 0 被指定为主 CPU，负责执行一次性的系统级初始化。
   if(cpuid() == 0){
@@ -50,6 +51,7 @@ main()
     printfinit();    // 初始化内核的 `printf` 函数。
     printf("\n");
     printf("xv6 内核正在启动\n"); // 打印内核启动信息。
+    printf("构建哈希: %s\n", build_hash);
     printf("\n");
     kinit();         // 初始化物理内存分配器，管理空闲的物理页。
     kvminit();       // 创建内核的页表，但尚未启用。

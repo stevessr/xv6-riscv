@@ -58,7 +58,7 @@ go(int which_child)
 
   mkdir("grindir");
   if(chdir("grindir") != 0){
-    printf("grind: chdir grindir failed\n");
+    printf("grind: chdir grindir 失败\n");
     exit(1);
   }
   chdir("/");
@@ -76,7 +76,7 @@ go(int which_child)
       unlink("grindir/../a");
     } else if(what == 4){
       if(chdir("grindir") != 0){
-        printf("grind: chdir grindir failed\n");
+        printf("grind: chdir grindir 失败\n");
         exit(1);
       }
       unlink("../b");
@@ -110,7 +110,7 @@ go(int which_child)
       if(pid == 0){
         exit(0);
       } else if(pid < 0){
-        printf("grind: fork failed\n");
+        printf("grind: fork 失败\n");
         exit(1);
       }
       wait(0);
@@ -121,7 +121,7 @@ go(int which_child)
         fork();
         exit(0);
       } else if(pid < 0){
-        printf("grind: fork failed\n");
+        printf("grind: fork 失败\n");
         exit(1);
       }
       wait(0);
@@ -136,11 +136,11 @@ go(int which_child)
         close(open("a", O_CREATE|O_RDWR));
         exit(0);
       } else if(pid < 0){
-        printf("grind: fork failed\n");
+        printf("grind: fork 失败\n");
         exit(1);
       }
       if(chdir("../grindir/..") != 0){
-        printf("grind: chdir failed\n");
+        printf("grind: chdir 失败\n");
         exit(1);
       }
       kill(pid);
@@ -151,14 +151,14 @@ go(int which_child)
         kill(getpid());
         exit(0);
       } else if(pid < 0){
-        printf("grind: fork failed\n");
+        printf("grind: fork 失败\n");
         exit(1);
       }
       wait(0);
     } else if(what == 19){
       int fds[2];
       if(pipe(fds) < 0){
-        printf("grind: pipe failed\n");
+        printf("grind: pipe 失败\n");
         exit(1);
       }
       int pid = fork();
@@ -166,13 +166,13 @@ go(int which_child)
         fork();
         fork();
         if(write(fds[1], "x", 1) != 1)
-          printf("grind: pipe write failed\n");
+          printf("grind: pipe write 失败\n");
         char c;
         if(read(fds[0], &c, 1) != 1)
-          printf("grind: pipe read failed\n");
+          printf("grind: pipe read 失败\n");
         exit(0);
       } else if(pid < 0){
-        printf("grind: fork failed\n");
+        printf("grind: fork 失败\n");
         exit(1);
       }
       close(fds[0]);
@@ -189,7 +189,7 @@ go(int which_child)
         unlink("x");
         exit(0);
       } else if(pid < 0){
-        printf("grind: fork failed\n");
+        printf("grind: fork 失败\n");
         exit(1);
       }
       wait(0);
@@ -199,16 +199,16 @@ go(int which_child)
       // 文件描述符、块。
       int fd1 = open("c", O_CREATE|O_RDWR);
       if(fd1 < 0){
-        printf("grind: create c failed\n");
+        printf("grind: create c 失败\n");
         exit(1);
       }
       if(write(fd1, "x", 1) != 1){
-        printf("grind: write c failed\n");
+        printf("grind: write c 失败\n");
         exit(1);
       }
       struct stat st;
       if(fstat(fd1, &st) != 0){
-        printf("grind: fstat failed\n");
+        printf("grind: fstat 失败\n");
         exit(1);
       }
       if(st.size != 1){
@@ -225,11 +225,11 @@ go(int which_child)
       // echo hi | cat
       int aa[2], bb[2];
       if(pipe(aa) < 0){
-        fprintf(2, "grind: pipe failed\n");
+        fprintf(2, "grind: pipe 失败\n");
         exit(1);
       }
       if(pipe(bb) < 0){
-        fprintf(2, "grind: pipe failed\n");
+        fprintf(2, "grind: pipe 失败\n");
         exit(1);
       }
       int pid1 = fork();
@@ -239,7 +239,7 @@ go(int which_child)
         close(aa[0]);
         close(1);
         if(dup(aa[1]) != 1){
-          fprintf(2, "grind: dup failed\n");
+          fprintf(2, "grind: dup 失败\n");
           exit(1);
         }
         close(aa[1]);
@@ -248,7 +248,7 @@ go(int which_child)
         fprintf(2, "grind: echo: not found\n");
         exit(2);
       } else if(pid1 < 0){
-        fprintf(2, "grind: fork failed\n");
+        fprintf(2, "grind: fork 失败\n");
         exit(3);
       }
       int pid2 = fork();
@@ -257,13 +257,13 @@ go(int which_child)
         close(bb[0]);
         close(0);
         if(dup(aa[0]) != 0){
-          fprintf(2, "grind: dup failed\n");
+          fprintf(2, "grind: dup 失败\n");
           exit(4);
         }
         close(aa[0]);
         close(1);
         if(dup(bb[1]) != 1){
-          fprintf(2, "grind: dup failed\n");
+          fprintf(2, "grind: dup 失败\n");
           exit(5);
         }
         close(bb[1]);
@@ -272,7 +272,7 @@ go(int which_child)
         fprintf(2, "grind: cat: not found\n");
         exit(6);
       } else if(pid2 < 0){
-        fprintf(2, "grind: fork failed\n");
+        fprintf(2, "grind: fork 失败\n");
         exit(7);
       }
       close(aa[0]);
@@ -287,7 +287,7 @@ go(int which_child)
       wait(&st1);
       wait(&st2);
       if(st1 != 0 || st2 != 0 || strcmp(buf, "hi\n") != 0){
-        printf("grind: exec pipeline failed %d %d \"%s\"\n", st1, st2, buf);
+        printf("grind: exec pipeline 失败 %d %d \"%s\"\n", st1, st2, buf);
         exit(1);
       }
     }
@@ -302,7 +302,7 @@ iter()
   
   int pid1 = fork();
   if(pid1 < 0){
-    printf("grind: fork failed\n");
+    printf("grind: fork 失败\n");
     exit(1);
   }
   if(pid1 == 0){
@@ -313,7 +313,7 @@ iter()
 
   int pid2 = fork();
   if(pid2 < 0){
-    printf("grind: fork failed\n");
+    printf("grind: fork 失败\n");
     exit(1);
   }
   if(pid2 == 0){

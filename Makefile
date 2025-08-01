@@ -29,7 +29,10 @@ OBJS = \
   $K/sysfile.o \
   $K/kernelvec.o \
   $K/plic.o \
-  $K/virtio_disk.o
+  $K/virtio_disk.o \
+  $K/version.o
+
+OBJS_FOR_HASH := $(filter-out $K/version.o,$(OBJS))
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -83,8 +86,14 @@ endif
 
 LDFLAGS = -z max-page-size=4096
 
+GIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+$K/version.c: $(OBJS_FOR_HASH) $(UPROGS)
+	@echo "#include \"kernel/types.h\"" > $@
+	@echo "const char build_hash[] = \"$(GIT_HASH)-$(shell (cat $(OBJS_FOR_HASH) $(UPROGS) | sha1sum | head -c 40))\";" >> $@
+
 $K/kernel: $(OBJS) $K/kernel.ld $U/initcode
-	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
+	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS)
 	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
 
@@ -156,7 +165,8 @@ clean:
 	*/*.o */*.d */*.asm */*.sym \
 	$U/initcode $U/initcode.out $K/kernel fs.img \
 	mkfs/mkfs .gdbinit \
-        $U/usys.S \
+	$K/version.c \
+	   $U/usys.S \
 	$(UPROGS)
 
 # try to generate a unique GDB port

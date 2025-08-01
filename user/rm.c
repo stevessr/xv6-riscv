@@ -20,7 +20,7 @@ main(int argc, char *argv[])
   // 遍历所有参数（文件名）并删除文件
   for(i = 1; i < argc; i++){
     if(unlink(argv[i]) < 0){
-      fprintf(2, "rm: %s failed to delete\n", argv[i]);
+      fprintf(2, "rm: %s 失败 to delete\n", argv[i]);
       break;
     }
   }
