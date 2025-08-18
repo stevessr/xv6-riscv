@@ -3,7 +3,7 @@
 #include "user/user.h"
 #include "kernel/fs.h"
 
-// find 函��在指定路径下递归地查找具有特定名���的文件
+// find 函数在指定路径下递归地查找具有特定名称的文件
 void find(char *path, const char *filename) {
     char path_buffer[512], *path_pointer;
     int file_descriptor;
@@ -16,7 +16,7 @@ void find(char *path, const char *filename) {
         return;
     }
 
-    // 获��文件或目录的状态信息
+    // 获取文件或目录的状态信息
     if (fstat(file_descriptor, &status) < 0) {
         fprintf(2, "find: cannot stat %s\n", path);
         close(file_descriptor);

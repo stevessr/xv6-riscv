@@ -25,6 +25,8 @@ int main(int argc, char *argv[])
 
     if (pid == 0)
     {
+        close(p2c[1]);
+        close(c2p[0]);
 
         // 从父进程读取数据
         if (read(p2c[0], buf, 1) == 1)
@@ -41,6 +43,8 @@ int main(int argc, char *argv[])
     }
     else
     {
+        close(p2c[0]);
+        close(c2p[1]);
 
         // 向子进程发送数据
         write(p2c[1], &byte, 1);
