@@ -1,0 +1,7 @@
+usertrap
+0x7
+2
+lw	a3,0(zero) # 0 <_entry-0x80000000>
+trying to access unaccessible memory
+Load page fault
+initcode\000\000\000\000
