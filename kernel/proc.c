@@ -310,6 +310,9 @@ fork(void)
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
+  // Inherit syscall trace mask from parent so children are traced the same way.
+  np->tracemask = p->tracemask;
+
   pid = np->pid;
 
   release(&np->lock);
