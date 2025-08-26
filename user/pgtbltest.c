@@ -42,6 +42,11 @@ void
 print_pgtbl()
 {
   printf("print_pgtbl starting\n");
+  printf("词汇解释如下\n");
+  printf("va   : virtual  address ->  虚拟地址\n");
+  printf("pte  : page table entry ->  页表项  \n");
+  printf("pa   : physical address ->  物理地址\n");
+  printf("perm : permissions      ->  权限    \n");
   for (uint64 i = 0; i < 10; i++) {
     print_pte(i * PGSIZE);
   }
