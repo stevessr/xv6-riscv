@@ -98,6 +98,7 @@ extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 extern uint64 sys_trace(void);
+extern uint64 sys_mem(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -124,32 +125,34 @@ static uint64 (*syscalls[])(void) = {
     [SYS_mkdir] sys_mkdir,
     [SYS_close] sys_close,
     [SYS_trace] sys_trace,
+    [SYS_mem] sys_mem,
 };
 
 // Names for system calls for tracing/printing.
 static char *syscallnames[] = {
-  [SYS_fork] "fork",
-  [SYS_exit] "exit",
-  [SYS_wait] "wait",
-  [SYS_pipe] "pipe",
-  [SYS_read] "read",
-  [SYS_kill] "kill",
-  [SYS_exec] "exec",
-  [SYS_fstat] "fstat",
-  [SYS_chdir] "chdir",
-  [SYS_dup] "dup",
-  [SYS_getpid] "getpid",
-  [SYS_sbrk] "sbrk",
-  [SYS_sleep] "sleep",
-  [SYS_uptime] "uptime",
-  [SYS_open] "open",
-  [SYS_write] "write",
-  [SYS_mknod] "mknod",
-  [SYS_unlink] "unlink",
-  [SYS_link] "link",
-  [SYS_mkdir] "mkdir",
-  [SYS_close] "close",
-  [SYS_trace] "trace",
+    [SYS_fork] "fork",
+    [SYS_exit] "exit",
+    [SYS_wait] "wait",
+    [SYS_pipe] "pipe",
+    [SYS_read] "read",
+    [SYS_kill] "kill",
+    [SYS_exec] "exec",
+    [SYS_fstat] "fstat",
+    [SYS_chdir] "chdir",
+    [SYS_dup] "dup",
+    [SYS_getpid] "getpid",
+    [SYS_sbrk] "sbrk",
+    [SYS_sleep] "sleep",
+    [SYS_uptime] "uptime",
+    [SYS_open] "open",
+    [SYS_write] "write",
+    [SYS_mknod] "mknod",
+    [SYS_unlink] "unlink",
+    [SYS_link] "link",
+    [SYS_mkdir] "mkdir",
+    [SYS_close] "close",
+    [SYS_trace] "trace",
+    [SYS_mem]   "mem",
 };
 
 void syscall(void)
@@ -160,16 +163,20 @@ void syscall(void)
   num = p->trapframe->a7; // num = *(int *)0;
   if (num > 0 && num < NELEM(syscalls) && syscalls[num])
   {
-  // call the syscall handler and save return value
-  uint64 ret = syscalls[num]();
+    // call the syscall handler and save return value
+    uint64 ret = syscalls[num]();
     p->trapframe->a0 = ret;
 
     // tracing: if the process has the bit for this syscall set, print info
     // Format required by grader: "<pid>: syscall <name|num> -> <ret>"
-    if(p->tracemask & (1<<num)){
-      if(num < 24 && syscallnames[num]){
+    if (p->tracemask & (1 << num))
+    {
+      if (num < 24 && syscallnames[num])
+      {
         printf("%d: syscall %s -> %d\n", p->pid, syscallnames[num], (int)ret);
-      } else {
+      }
+      else
+      {
         printf("%d: syscall %d -> %d\n", p->pid, num, (int)ret);
       }
     }

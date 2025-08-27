@@ -91,3 +91,19 @@ kalloc(void)
   return (void*)r;
 }
 
+// Count free pages currently on the kmem freelist.
+// Returns number of free 4KB pages.
+int
+free_pages(void)
+{
+  int count = 0;
+  struct run *r;
+
+  acquire(&kmem.lock);
+  for(r = kmem.freelist; r != 0; r = r->next)
+    count++;
+  release(&kmem.lock);
+
+  return count;
+}
+

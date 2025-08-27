@@ -101,3 +101,8 @@ sys_trace(void)
   p->tracemask = mask;
   return 0;
 }
+
+uint64
+sys_mem(void){
+  return free_pages();
+}

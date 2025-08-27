@@ -63,6 +63,8 @@ void            ramdiskrw(struct buf*);
 void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
+// return number of free 4KB pages currently in the physical free list
+int             free_pages(void);
 
 // log.c
 void            initlog(int, struct superblock*);
