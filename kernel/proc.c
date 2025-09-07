@@ -202,6 +202,10 @@ proc_pagetable(struct proc *p)
     return 0;
   }
 
+  #ifdef LAB_PGTBL
+
+  #endif
+
   return pagetable;
 }
 
