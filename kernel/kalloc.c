@@ -23,11 +23,49 @@ struct {
   struct run *freelist;
 } kmem;
 
+#ifdef LAB_PGTBL
+// superpage freelist
+struct superrun {
+  struct superrun *next;
+  void *pa;
+};
+struct {
+  struct spinlock lock;
+  struct superrun *freelist;
+} kmem_super;
+#endif
+
 void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
+  // Reserve a small tail region for superpages and avoid adding it
+  // to the normal 4KB freelist. Reserve up to 8 superpages at top of RAM.
+#ifdef LAB_PGTBL
+  initlock(&kmem_super.lock, "kmem_super");
+  // compute reservation region
+  uint64 super_region_size = 8 * SUPERPGSIZE;
+  void *super_region_start = (void*)(PHYSTOP - super_region_size);
+  if((void*)end < super_region_start) {
+    freerange(end, super_region_start);
+    // add super blocks
+    for(uint64 p = (uint64)super_region_start; p + SUPERPGSIZE <= PHYSTOP; p += SUPERPGSIZE){
+      struct superrun *sr = (struct superrun*)p;
+      // don't touch memory contents; just add to freelist
+      acquire(&kmem_super.lock);
+      sr->pa = (void*)p;
+      sr->next = kmem_super.freelist;
+      kmem_super.freelist = sr;
+      release(&kmem_super.lock);
+    }
+    // no tail after reserved region
+  } else {
+    // not enough space; fall back to normal freelist for all
+    freerange(end, (void*)PHYSTOP);
+  }
+#else
   freerange(end, (void*)PHYSTOP);
+#endif
 }
 
 void
@@ -80,3 +118,32 @@ kalloc(void)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
+
+#ifdef LAB_PGTBL
+// Allocate one superpage (2MB) region. Returns physical address or 0.
+void *
+superalloc(void)
+{
+  struct superrun *sr;
+  acquire(&kmem_super.lock);
+  sr = kmem_super.freelist;
+  if(sr)
+    kmem_super.freelist = sr->next;
+  release(&kmem_super.lock);
+  if(sr)
+    return sr->pa;
+  return 0;
+}
+
+// Free a superpage back to the superpage freelist.
+void
+superfree(void *pa)
+{
+  struct superrun *sr = (struct superrun*)pa;
+  acquire(&kmem_super.lock);
+  sr->pa = pa;
+  sr->next = kmem_super.freelist;
+  kmem_super.freelist = sr;
+  release(&kmem_super.lock);
+}
+#endif

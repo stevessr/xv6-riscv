@@ -159,7 +159,7 @@ freeproc(struct proc *p)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
   if(p->pagetable)
-    proc_freepagetable(p->pagetable, p->sz);
+  proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
@@ -202,9 +202,30 @@ proc_pagetable(struct proc *p)
     return 0;
   }
 
-  #ifdef LAB_PGTBL
 
-  #endif
+#ifdef LAB_PGTBL
+  // map a read-only user page at USYSCALL that holds a struct usyscall
+  // initialize it with this process's pid. kernel keeps the returned
+  // physical page and maps it read-only for user.
+  {
+    char *uspa = kalloc();
+    if(uspa == 0){
+      uvmunmap(pagetable, TRAPFRAME, 1, 0);
+      uvmfree(pagetable, 0);
+      return 0;
+    }
+    memset(uspa, 0, PGSIZE);
+    struct usyscall *u = (struct usyscall*)uspa;
+    u->pid = p->pid;
+    // map read-only for user
+    if(mappages(pagetable, USYSCALL, PGSIZE, (uint64)uspa, PTE_R | PTE_U) < 0){
+      kfree(uspa);
+      uvmunmap(pagetable, TRAPFRAME, 1, 0);
+      uvmfree(pagetable, 0);
+      return 0;
+    }
+  }
+#endif
 
   return pagetable;
 }
@@ -216,6 +237,15 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
+  #ifdef LAB_PGTBL
+  // free USYSCALL mapping if present
+  pte_t *p = walk(pagetable, USYSCALL, 0);
+  if(p && (*p & PTE_V)){
+    uint64 pa = PTE2PA(*p);
+    uvmunmap(pagetable, USYSCALL, 1, 0);
+    kfree((void*)pa);
+  }
+  #endif
   uvmfree(pagetable, sz);
 }
 
@@ -299,6 +329,16 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+
+#ifdef LAB_PGTBL
+  // update child's USYSCALL struct if mapped
+  pte_t *upte = walk(np->pagetable, USYSCALL, 0);
+  if(upte && (*upte & PTE_V)){
+    uint64 upa = PTE2PA(*upte);
+    struct usyscall *u = (struct usyscall*)upa;
+    u->pid = np->pid;
+  }
+#endif
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
