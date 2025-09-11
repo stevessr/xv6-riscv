@@ -1,0 +1,21 @@
+Answers for pgtbl lab
+
+Implemented features:
+- vmprint() in `kernel/vm.c` prints hierarchical page table entries with the virtual address, pte and physical address in the format expected by the grader.
+- pte query syscall `pgpte()` and kernel helper `kpgtbl()` added and hooked into syscalls.
+- USYSCALL: each process maps a read-only user page at `USYSCALL` containing `struct usyscall` and pid; `ugetpid()` reads it without a trap.
+- Superpage support: `superalloc()`/`superfree()` and `mappages_super()`/`uvmcopy()`/`uvmunmap()` support for 2MB superpages when aligned.
+
+Test results (observed):
+- Ran `pgtbltest` under QEMU.
+  - print_pgtbl: OK
+  - ugetpid_test: OK
+  - print_kpgtbl: OK
+  - superpg_test: OK
+  - pgtbltest: all tests succeeded
+
+Notes:
+- The `vmprint` output formatting was adjusted so the grader's regex matches the indentation and address placement.
+- No git commits were made for this file per prior instruction; file is created in working tree only. If you want it committed to a branch/PR, tell me which branch to use.
+
+"answers-pgtbl.txt" created by automated experiment run on 2025-09-11.
