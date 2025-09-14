@@ -48,21 +48,21 @@ struct
 
 void binit(void)
 {
-  struct buf *b;
+  struct buf *b; // 指向缓冲区的指针
 
-  initlock(&bcache.lock, "bcache"); // 初始化bcache的锁
+  initlock(&bcache.lock, "bcache"); // 初始化bcache的锁，名称为"bcache"
 
   // Create linked list of buffers
   // 创建缓冲区链表
-  bcache.head.prev = &bcache.head;
-  bcache.head.next = &bcache.head;
-  for (b = bcache.buf; b < bcache.buf + NBUF; b++)
+  bcache.head.prev = &bcache.head; // head的前驱指向自己
+  bcache.head.next = &bcache.head; // head的后继指向自己
+  for (b = bcache.buf; b < bcache.buf + NBUF; b++) // 遍历所有缓冲区
   {
-    b->next = bcache.head.next;
-    b->prev = &bcache.head;
-    initsleeplock(&b->lock, "buffer"); // 初始化每个缓冲区的睡眠锁
-    bcache.head.next->prev = b;
-    bcache.head.next = b;
+    b->next = bcache.head.next; // 新缓冲区的后继指向当前的第一个缓冲区
+    b->prev = &bcache.head; // 新缓冲区的前驱指向head
+    initsleeplock(&b->lock, "buffer"); // 初始化每个缓冲区的睡眠锁，名称为"buffer"
+    bcache.head.next->prev = b; // 原来的第一个缓冲区的前驱指向新缓冲区
+    bcache.head.next = b; // head的后继指向新缓冲区
   }
 }
 
@@ -75,20 +75,20 @@ void binit(void)
 static struct buf *
 bget(uint dev, uint blockno)
 {
-  struct buf *b;
+  struct buf *b; // 指向缓冲区的指针
 
-  acquire(&bcache.lock); // 获取bcache的锁
+  acquire(&bcache.lock); // 获取bcache的锁，保护对bcache的访问
 
   // Is the block already cached?
   // 块是否已缓存？
-  for (b = bcache.head.next; b != &bcache.head; b = b->next)
+  for (b = bcache.head.next; b != &bcache.head; b = b->next) // 遍历缓冲区链表
   {
-    if (b->dev == dev && b->blockno == blockno)
+    if (b->dev == dev && b->blockno == blockno) // 如果找到匹配的设备号和块号
     {
       b->refcnt++;            // 增加引用计数
       release(&bcache.lock);  // 释放bcache的锁
-      acquiresleep(&b->lock); // 获取缓冲区的睡眠锁
-      return b;
+      acquiresleep(&b->lock); // 获取缓冲区的睡眠锁，等待缓冲区可用
+      return b; // 返回找到的缓冲区
     }
   }
 
@@ -96,20 +96,20 @@ bget(uint dev, uint blockno)
   // 未缓存。
   // Recycle the least recently used (LRU) unused buffer.
   // 回收最近最少使用（LRU）的未使用缓冲区。
-  for (b = bcache.head.prev; b != &bcache.head; b = b->prev)
+  for (b = bcache.head.prev; b != &bcache.head; b = b->prev) // 从后往前遍历，即从最不常用的开始
   {
-    if (b->refcnt == 0)
-    { // 如果引用计数为0
-      b->dev = dev;
-      b->blockno = blockno;
+    if (b->refcnt == 0) // 如果引用计数为0，表示该缓冲区未使用
+    { 
+      b->dev = dev; // 设置新的设备号
+      b->blockno = blockno; // 设置新的块号
       b->valid = 0; // 标记为无效，因为我们将从磁盘读取
-      b->refcnt = 1;
+      b->refcnt = 1; // 设置引用计数为1
       release(&bcache.lock);  // 释放bcache的锁
       acquiresleep(&b->lock); // 获取缓冲区的睡眠锁
-      return b;
+      return b; // 返回这个被回收的缓冲区
     }
   }
-  panic("bget: no buffers"); // 恐慌：没有可用的缓冲区
+  panic("bget: no buffers"); // 如果没有可用的缓冲区，则系统恐慌
 }
 
 // Return a locked buf with the contents of the indicated block.
@@ -117,23 +117,23 @@ bget(uint dev, uint blockno)
 struct buf *
 bread(uint dev, uint blockno)
 {
-  struct buf *b;
+  struct buf *b; // 指向缓冲区的指针
 
-  b = bget(dev, blockno); // 获取缓冲区
-  if (!b->valid)
-  {                       // 如果缓冲区内容无效
+  b = bget(dev, blockno); // 获取一个缓冲区
+  if (!b->valid) // 如果缓冲区内容无效
+  {                       
     virtio_disk_rw(b, 0); // 从磁盘读取数据到缓冲区（0表示读）
     b->valid = 1;         // 标记为有效
   }
-  return b;
+  return b; // 返回缓冲区
 }
 
 // Write b's contents to disk.  Must be locked.
 // 将b的内容写入磁盘。必须被锁定。
 void bwrite(struct buf *b)
 {
-  if (!holdingsleep(&b->lock))
-    panic("bwrite");    // 恐慌：bwrite时未持有锁
+  if (!holdingsleep(&b->lock)) // 检查当前进程是否持有该缓冲区的睡眠锁
+    panic("bwrite");    // 如果没有持有锁，则系统恐慌
   virtio_disk_rw(b, 1); // 将缓冲区数据写入磁盘（1表示写）
 }
 
@@ -143,20 +143,20 @@ void bwrite(struct buf *b)
 // 移动到最近使用列表的头部。
 void brelse(struct buf *b)
 {
-  if (!holdingsleep(&b->lock))
-    panic("brelse"); // 恐慌：brelse时未持有锁
+  if (!holdingsleep(&b->lock)) // 检查当前进程是否持有该缓冲区的睡眠锁
+    panic("brelse"); // 如果没有持有锁，则系统恐慌
 
   releasesleep(&b->lock); // 释放缓冲区的睡眠锁
 
   acquire(&bcache.lock); // 获取bcache的锁
   b->refcnt--;           // 减少引用计数
-  if (b->refcnt == 0)
+  if (b->refcnt == 0) // 如果引用计数为0
   {
     // no one is waiting for it.
     // 没有进程在等待它。
-    b->next->prev = b->prev;
+    b->next->prev = b->prev; // 将其从链表中移除
     b->prev->next = b->next;
-    b->next = bcache.head.next;
+    b->next = bcache.head.next; // 将其移动到链表头部
     b->prev = &bcache.head;
     bcache.head.next->prev = b;
     bcache.head.next = b;

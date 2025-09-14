@@ -1,4 +1,3 @@
-#- * - coding : utf - 8 - * -
 #include "types.h"
 #include "param.h"
 #include "memlayout.h"
