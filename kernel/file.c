@@ -1,5 +1,6 @@
 //
 // Support functions for system calls that involve file descriptors.
+// 支持涉及文件描述符的系统调用的函数。
 //
 
 #include "types.h"
@@ -14,26 +15,29 @@
 #include "proc.h"
 
 struct devsw devsw[NDEV];
-struct {
+struct
+{
   struct spinlock lock;
   struct file file[NFILE];
 } ftable;
 
-void
-fileinit(void)
+void fileinit(void)
 {
   initlock(&ftable.lock, "ftable");
 }
 
 // Allocate a file structure.
-struct file*
+// 分配一个文件结构。
+struct file *
 filealloc(void)
 {
   struct file *f;
 
   acquire(&ftable.lock);
-  for(f = ftable.file; f < ftable.file + NFILE; f++){
-    if(f->ref == 0){
+  for (f = ftable.file; f < ftable.file + NFILE; f++)
+  {
+    if (f->ref == 0)
+    {
       f->ref = 1;
       release(&ftable.lock);
       return f;
@@ -44,11 +48,12 @@ filealloc(void)
 }
 
 // Increment ref count for file f.
-struct file*
+// 增加文件f的引用计数。
+struct file *
 filedup(struct file *f)
 {
   acquire(&ftable.lock);
-  if(f->ref < 1)
+  if (f->ref < 1)
     panic("filedup");
   f->ref++;
   release(&ftable.lock);
@@ -56,15 +61,16 @@ filedup(struct file *f)
 }
 
 // Close file f.  (Decrement ref count, close when reaches 0.)
-void
-fileclose(struct file *f)
+// 关闭文件f。（减少引用计数，当达到0时关闭。）
+void fileclose(struct file *f)
 {
   struct file ff;
 
   acquire(&ftable.lock);
-  if(f->ref < 1)
+  if (f->ref < 1)
     panic("fileclose");
-  if(--f->ref > 0){
+  if (--f->ref > 0)
+  {
     release(&ftable.lock);
     return;
   }
@@ -73,9 +79,12 @@ fileclose(struct file *f)
   f->type = FD_NONE;
   release(&ftable.lock);
 
-  if(ff.type == FD_PIPE){
+  if (ff.type == FD_PIPE)
+  {
     pipeclose(ff.pipe, ff.writable);
-  } else if(ff.type == FD_INODE || ff.type == FD_DEVICE){
+  }
+  else if (ff.type == FD_INODE || ff.type == FD_DEVICE)
+  {
     begin_op();
     iput(ff.ip);
     end_op();
@@ -83,18 +92,20 @@ fileclose(struct file *f)
 }
 
 // Get metadata about file f.
+// 获取有关文件f的元数据。
 // addr is a user virtual address, pointing to a struct stat.
-int
-filestat(struct file *f, uint64 addr)
+// addr是指向struct stat的用户虚拟地址。
+int filestat(struct file *f, uint64 addr)
 {
   struct proc *p = myproc();
   struct stat st;
-  
-  if(f->type == FD_INODE || f->type == FD_DEVICE){
+
+  if (f->type == FD_INODE || f->type == FD_DEVICE)
+  {
     ilock(f->ip);
     stati(f->ip, &st);
     iunlock(f->ip);
-    if(copyout(p->pagetable, addr, (char *)&st, sizeof(st)) < 0)
+    if (copyout(p->pagetable, addr, (char *)&st, sizeof(st)) < 0)
       return -1;
     return 0;
   }
@@ -102,27 +113,35 @@ filestat(struct file *f, uint64 addr)
 }
 
 // Read from file f.
+// 从文件f读取。
 // addr is a user virtual address.
-int
-fileread(struct file *f, uint64 addr, int n)
+// addr是用户虚拟地址。
+int fileread(struct file *f, uint64 addr, int n)
 {
   int r = 0;
 
-  if(f->readable == 0)
+  if (f->readable == 0)
     return -1;
 
-  if(f->type == FD_PIPE){
+  if (f->type == FD_PIPE)
+  {
     r = piperead(f->pipe, addr, n);
-  } else if(f->type == FD_DEVICE){
-    if(f->major < 0 || f->major >= NDEV || !devsw[f->major].read)
+  }
+  else if (f->type == FD_DEVICE)
+  {
+    if (f->major < 0 || f->major >= NDEV || !devsw[f->major].read)
       return -1;
     r = devsw[f->major].read(1, addr, n);
-  } else if(f->type == FD_INODE){
+  }
+  else if (f->type == FD_INODE)
+  {
     ilock(f->ip);
-    if((r = readi(f->ip, 1, addr, f->off, n)) > 0)
+    if ((r = readi(f->ip, 1, addr, f->off, n)) > 0)
       f->off += r;
     iunlock(f->ip);
-  } else {
+  }
+  else
+  {
     panic("fileread");
   }
 
@@ -130,31 +149,42 @@ fileread(struct file *f, uint64 addr, int n)
 }
 
 // Write to file f.
+// 写入文件f。
 // addr is a user virtual address.
-int
-filewrite(struct file *f, uint64 addr, int n)
+// addr是用户虚拟地址。
+int filewrite(struct file *f, uint64 addr, int n)
 {
   int r, ret = 0;
 
-  if(f->writable == 0)
+  if (f->writable == 0)
     return -1;
 
-  if(f->type == FD_PIPE){
+  if (f->type == FD_PIPE)
+  {
     ret = pipewrite(f->pipe, addr, n);
-  } else if(f->type == FD_DEVICE){
-    if(f->major < 0 || f->major >= NDEV || !devsw[f->major].write)
+  }
+  else if (f->type == FD_DEVICE)
+  {
+    if (f->major < 0 || f->major >= NDEV || !devsw[f->major].write)
       return -1;
     ret = devsw[f->major].write(1, addr, n);
-  } else if(f->type == FD_INODE){
+  }
+  else if (f->type == FD_INODE)
+  {
     // write a few blocks at a time to avoid exceeding
+    // 一次写入几个块以避免超出
     // the maximum log transaction size, including
+    // 最大日志事务大小，包括
     // i-node, indirect block, allocation blocks,
+    // i-node，间接块，分配块，
     // and 2 blocks of slop for non-aligned writes.
-    int max = ((MAXOPBLOCKS-1-1-2) / 2) * BSIZE;
+    // 以及用于非对齐写入的2个块的余量。
+    int max = ((MAXOPBLOCKS - 1 - 1 - 2) / 2) * BSIZE;
     int i = 0;
-    while(i < n){
+    while (i < n)
+    {
       int n1 = n - i;
-      if(n1 > max)
+      if (n1 > max)
         n1 = max;
 
       begin_op();
@@ -164,17 +194,20 @@ filewrite(struct file *f, uint64 addr, int n)
       iunlock(f->ip);
       end_op();
 
-      if(r != n1){
+      if (r != n1)
+      {
         // error from writei
+        // 来自writei的错误
         break;
       }
       i += r;
     }
     ret = (i == n ? n : -1);
-  } else {
+  }
+  else
+  {
     panic("filewrite");
   }
 
   return ret;
 }
-

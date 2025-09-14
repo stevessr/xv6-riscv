@@ -20,6 +20,7 @@ forktest(void)
 
   print("fork test\n");
 
+  // 循环创建子进程，直到fork失败
   for(n=0; n<N; n++){
     pid = fork();
     if(pid < 0)
@@ -28,11 +29,13 @@ forktest(void)
       exit(0);
   }
 
+  // 如果fork成功了N次，说明有问题
   if(n == N){
     print("fork claimed to work N times!\n");
     exit(1);
   }
 
+  // 等待所有子进程退出
   for(; n > 0; n--){
     if(wait(0) < 0){
       print("wait stopped early\n");
@@ -40,6 +43,7 @@ forktest(void)
     }
   }
 
+  // 此时不应该有子进程可以等待了
   if(wait(0) != -1){
     print("wait got too many\n");
     exit(1);

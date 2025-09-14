@@ -1,39 +1,39 @@
-OUTPUT_ARCH( "riscv" )
+OUTPUT_ARCH( "riscv" ) /* 指定输出目标体系结构为riscv */
 
 SECTIONS
 {
- . = 0x0;
+ . = 0x0; /* 用户程序的起始地址为0 */
  
-  .text : {
+  .text : { /* 代码段 */
     *(.text .text.*)
   }
 
-  .rodata : {
+  .rodata : { /* 只读数据段 */
     . = ALIGN(16);
-    *(.srodata .srodata.*) /* do not need to distinguish this from .rodata */
+    *(.srodata .srodata.*)
     . = ALIGN(16);
     *(.rodata .rodata.*)
   }
 
-  .eh_frame : {
+  .eh_frame : { /* 异常处理帧 */
        *(.eh_frame)
        *(.eh_frame.*)
    }
 
-  . = ALIGN(0x1000);
-  .data : {
+  . = ALIGN(0x1000); /* 对齐到4K边界 */
+  .data : { /* 已初始化数据段 */
     . = ALIGN(16);
-    *(.sdata .sdata.*) /* do not need to distinguish this from .data */
+    *(.sdata .sdata.*)
     . = ALIGN(16);
     *(.data .data.*)
   }
 
-  .bss : {
+  .bss : { /* 未初始化数据段 */
     . = ALIGN(16);
-    *(.sbss .sbss.*) /* do not need to distinguish this from .bss */
+    *(.sbss .sbss.*)
     . = ALIGN(16);
     *(.bss .bss.*)
   }
 
-  PROVIDE(end = .);
+  PROVIDE(end = .); /* 定义end符号，表示所有段的结束位置 */
 }

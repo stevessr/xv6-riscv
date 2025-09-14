@@ -1,4 +1,4 @@
-// init: The initial user-level program
+// init: 最初的用户级程序
 
 #include "kernel/types.h"
 #include "kernel/stat.h"
@@ -16,10 +16,12 @@ main(void)
 {
   int pid, wpid;
 
+  // 如果控制台设备文件不存在，则创建它
   if(open("console", O_RDWR) < 0){
     mknod("console", CONSOLE, 0);
     open("console", O_RDWR);
   }
+  // 复制文件描述符，使stdout和stderr都指向控制台
   dup(0);  // stdout
   dup(0);  // stderr
 
@@ -31,23 +33,24 @@ main(void)
       exit(1);
     }
     if(pid == 0){
+      // 子进程执行shell
       exec("sh", argv);
       printf("init: exec sh failed\n");
       exit(1);
     }
 
     for(;;){
-      // this call to wait() returns if the shell exits,
-      // or if a parentless process exits.
+      // wait()的这个调用在shell退出或
+      // 一个无父进程退出时返回。
       wpid = wait((int *) 0);
       if(wpid == pid){
-        // the shell exited; restart it.
+        // shell退出了；重启它。
         break;
       } else if(wpid < 0){
         printf("init: wait returned an error\n");
         exit(1);
       } else {
-        // it was a parentless process; do nothing.
+        // 这是一个无父进程；什么也不做。
       }
     }
   }

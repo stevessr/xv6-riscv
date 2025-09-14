@@ -7,12 +7,15 @@ main(int argc, char *argv[])
 {
   int i;
 
+  // 如果参数少于2个，打印用法并退出
   if(argc < 2){
     fprintf(2, "Usage: rm files...\n");
     exit(1);
   }
 
+  // 遍历所有要删除的文件
   for(i = 1; i < argc; i++){
+    // 调用unlink系统调用删除文件
     if(unlink(argv[i]) < 0){
       fprintf(2, "rm: %s failed to delete\n", argv[i]);
       break;

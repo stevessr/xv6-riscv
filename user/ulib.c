@@ -6,7 +6,7 @@
 #include "user/user.h"
 
 //
-// wrapper so that it's OK if main() does not call exit().
+// 包装器，这样即使main()不调用exit()也没关系。
 //
 void
 start(int argc, char **argv)
@@ -158,4 +158,3 @@ char *
 sbrklazy(int n) {
   return sys_sbrk(n, SBRK_LAZY);
 }
-

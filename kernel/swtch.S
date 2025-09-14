@@ -1,12 +1,13 @@
-# Context switch
+# -*- coding: utf-8 -*-
+# 上下文切换
 #
 #   void swtch(struct context *old, struct context *new);
 # 
-# Save current registers in old. Load from new.	
-
+# 将当前寄存器保存在 old 中。从 new 加载。
 
 .globl swtch
 swtch:
+        # 保存旧上下文
         sd ra, 0(a0)
         sd sp, 8(a0)
         sd s0, 16(a0)
@@ -22,6 +23,7 @@ swtch:
         sd s10, 96(a0)
         sd s11, 104(a0)
 
+        # 加载新上下文
         ld ra, 0(a1)
         ld sp, 8(a1)
         ld s0, 16(a1)
@@ -38,5 +40,3 @@ swtch:
         ld s11, 104(a1)
         
         ret
-
-	

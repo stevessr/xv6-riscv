@@ -13,7 +13,7 @@ sys_exit(void)
   int n;
   argint(0, &n);
   kexit(n);
-  return 0;  // not reached
+  return 0;  // 不会执行到这里
 }
 
 uint64
@@ -52,9 +52,9 @@ sys_sbrk(void)
       return -1;
     }
   } else {
-    // Lazily allocate memory for this process: increase its memory
-    // size but don't allocate memory. If the processes uses the
-    // memory, vmfault() will allocate it.
+    // 为此进程惰性分配内存：增加其内存大小
+    // 但不分配内存。如果进程使用该内存，
+    // vmfault() 将会分配它。
     if(addr + n < addr)
       return -1;
     myproc()->sz += n;
@@ -93,8 +93,8 @@ sys_kill(void)
   return kkill(pid);
 }
 
-// return how many clock tick interrupts have occurred
-// since start.
+// 返回自启动以来发生了多少次时钟滴答中断。
+
 uint64
 sys_uptime(void)
 {

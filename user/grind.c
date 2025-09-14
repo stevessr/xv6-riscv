@@ -1,5 +1,5 @@
 //
-// run random system calls in parallel forever.
+// 永远并行运行随机系统调用。
 //
 
 #include "kernel/param.h"
@@ -12,28 +12,28 @@
 #include "kernel/memlayout.h"
 #include "kernel/riscv.h"
 
-// from FreeBSD.
+// 来自FreeBSD。
 int
 do_rand(unsigned long *ctx)
 {
 /*
- * Compute x = (7^5 * x) mod (2^31 - 1)
- * without overflowing 31 bits:
+ * 计算 x = (7^5 * x) mod (2^31 - 1) 
+ * 不会溢出31位：
  *      (2^31 - 1) = 127773 * (7^5) + 2836
- * From "Random number generators: good ones are hard to find",
+ * 来自 "Random number generators: good ones are hard to find",
  * Park and Miller, Communications of the ACM, vol. 31, no. 10,
  * October 1988, p. 1195.
  */
     long hi, lo, x;
 
-    /* Transform to [1, 0x7ffffffe] range. */
+    /* 转换为 [1, 0x7ffffffe] 范围。 */
     x = (*ctx % 0x7ffffffe) + 1;
     hi = x / 127773;
     lo = x % 127773;
     x = 16807 * lo - 2836 * hi;
     if (x < 0)
         x += 0x7fffffff;
-    /* Transform to [0, 0x7ffffffd] range. */
+    /* 转换为 [0, 0x7ffffffd] 范围。 */
     x--;
     *ctx = x;
     return (x);
@@ -68,12 +68,16 @@ go(int which_child)
       write(1, which_child?"B":"A", 1);
     int what = rand() % 23;
     if(what == 1){
+      // 测试创建文件
       close(open("grindir/../a", O_CREATE|O_RDWR));
     } else if(what == 2){
+      // 测试在多级目录中创建文件
       close(open("grindir/../grindir/../b", O_CREATE|O_RDWR));
     } else if(what == 3){
+      // 测试删除文件
       unlink("grindir/../a");
     } else if(what == 4){
+      // 测试在子目录中删除文件
       if(chdir("grindir") != 0){
         printf("grind: chdir grindir failed\n");
         exit(1);
@@ -81,30 +85,39 @@ go(int which_child)
       unlink("../b");
       chdir("/");
     } else if(what == 5){
+      // 测试打开已存在的文件
       close(fd);
       fd = open("/grindir/../a", O_CREATE|O_RDWR);
     } else if(what == 6){
+      // 测试使用.和..路径打开文件
       close(fd);
       fd = open("/./grindir/./../b", O_CREATE|O_RDWR);
     } else if(what == 7){
+      // 测试写文件
       write(fd, buf, sizeof(buf));
     } else if(what == 8){
+      // 测试读文件
       read(fd, buf, sizeof(buf));
     } else if(what == 9){
+      // 测试在目录中创建和删除文件
       mkdir("grindir/../a");
       close(open("a/../a/./a", O_CREATE|O_RDWR));
       unlink("a/a");
     } else if(what == 10){
+      // 测试在父目录中创建和删除文件
       mkdir("/../b");
       close(open("grindir/../b/b", O_CREATE|O_RDWR));
       unlink("b/b");
     } else if(what == 11){
+      // 测试链接文件
       unlink("b");
       link("../grindir/./../a", "../b");
     } else if(what == 12){
+      // 测试链接文件
       unlink("../grindir/../a");
       link(".././b", "/grindir/../a");
     } else if(what == 13){
+      // 测试fork和wait
       int pid = fork();
       if(pid == 0){
         exit(0);
@@ -114,6 +127,7 @@ go(int which_child)
       }
       wait(0);
     } else if(what == 14){
+      // 测试多次fork
       int pid = fork();
       if(pid == 0){
         fork();
@@ -125,11 +139,14 @@ go(int which_child)
       }
       wait(0);
     } else if(what == 15){
+      // 测试sbrk增加内存
       sbrk(6011);
     } else if(what == 16){
+      // 测试sbrk减少内存
       if(sbrk(0) > break0)
         sbrk(-(sbrk(0) - break0));
     } else if(what == 17){
+      // 测试kill
       int pid = fork();
       if(pid == 0){
         close(open("a", O_CREATE|O_RDWR));
@@ -145,6 +162,7 @@ go(int which_child)
       kill(pid);
       wait(0);
     } else if(what == 18){
+      // 测试自己kill自己
       int pid = fork();
       if(pid == 0){
         kill(getpid());
@@ -155,6 +173,7 @@ go(int which_child)
       }
       wait(0);
     } else if(what == 19){
+      // 测试管道
       int fds[2];
       if(pipe(fds) < 0){
         printf("grind: pipe failed\n");
@@ -178,6 +197,7 @@ go(int which_child)
       close(fds[1]);
       wait(0);
     } else if(what == 20){
+      // 复杂的目录和文件操作
       int pid = fork();
       if(pid == 0){
         unlink("a");
@@ -193,9 +213,10 @@ go(int which_child)
       }
       wait(0);
     } else if(what == 21){
+      // 检查inode, fd, block的可用性
       unlink("c");
-      // should always succeed. check that there are free i-nodes,
-      // file descriptors, blocks.
+      // 应该总是成功。检查是否有空闲的i节点，
+      // 文件描述符，块。
       int fd1 = open("c", O_CREATE|O_RDWR);
       if(fd1 < 0){
         printf("grind: create c failed\n");
@@ -221,7 +242,7 @@ go(int which_child)
       close(fd1);
       unlink("c");
     } else if(what == 22){
-      // echo hi | cat
+      // 测试管道和exec: echo hi | cat
       int aa[2], bb[2];
       if(pipe(aa) < 0){
         fprintf(2, "grind: pipe failed\n");

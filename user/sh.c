@@ -4,7 +4,7 @@
 #include "user/user.h"
 #include "kernel/fcntl.h"
 
-// Parsed command representation
+// 解析后的命令表示
 #define EXEC  1
 #define REDIR 2
 #define PIPE  3
@@ -49,12 +49,12 @@ struct backcmd {
   struct cmd *cmd;
 };
 
-int fork1(void);  // Fork but panics on failure.
+int fork1(void);  // Fork，失败时会panic。
 void panic(char*);
 struct cmd *parsecmd(char*);
 void runcmd(struct cmd*) __attribute__((noreturn));
 
-// Execute cmd.  Never returns.
+// 执行cmd。永不返回。
 void
 runcmd(struct cmd *cmd)
 {
@@ -148,7 +148,7 @@ main(void)
   static char buf[100];
   int fd;
 
-  // Ensure that three file descriptors are open.
+  // 确保三个文件描述符是打开的。
   while((fd = open("console", O_RDWR)) >= 0){
     if(fd >= 3){
       close(fd);
@@ -156,16 +156,17 @@ main(void)
     }
   }
 
-  // Read and run input commands.
+  // 读取并运行输入命令。
   while(getcmd(buf, sizeof(buf)) >= 0){
     char *cmd = buf;
     while (*cmd == ' ' || *cmd == '\t')
       cmd++;
-    if (*cmd == '\n') // is a blank command
+    if (*cmd == '\n') // 是一个空命令
       continue;
     if(cmd[0] == 'c' && cmd[1] == 'd' && cmd[2] == ' '){
-      // Chdir must be called by the parent, not the child.
-      cmd[strlen(cmd)-1] = 0;  // chop \n
+      // Chdir必须由父进程而不是子进程调用。
+      cmd[strlen(cmd)-1] = 0;  // 去掉\n
+
       if(chdir(cmd+3) < 0)
         fprintf(2, "cannot cd %s\n", cmd+3);
     } else {
@@ -196,7 +197,7 @@ fork1(void)
 }
 
 //PAGEBREAK!
-// Constructors
+// 构造函数
 
 struct cmd*
 execcmd(void)
@@ -263,7 +264,7 @@ backcmd(struct cmd *subcmd)
   return (struct cmd*)cmd;
 }
 //PAGEBREAK!
-// Parsing
+// 解析
 
 char whitespace[] = " \t\r\n\v";
 char symbols[] = "<|>&;()";
@@ -293,7 +294,7 @@ gettoken(char **ps, char *es, char **q, char **eq)
     break;
   case '>':
     s++;
-    if(*s == '>'){
+    if(*s == '>){
       ret = '+';
       s++;
     }
@@ -473,7 +474,7 @@ nulterminate(struct cmd *cmd)
     break;
 
   case REDIR:
-    rcmd = (struct redircmd*)cmd;
+    rcmd = (struct redircmd*)cmd);
     nulterminate(rcmd->cmd);
     *rcmd->efile = 0;
     break;
