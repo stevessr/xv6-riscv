@@ -8,6 +8,12 @@
 #include "proc.h"
 #include "fs.h"
 
+#ifdef LAB_PGTBL
+// super page allocator functions in kalloc.c
+extern void *superalloc(void);
+extern void superfree(void *pa);
+#endif
+
 /*
  * the kernel's page table.
  */
@@ -117,6 +123,38 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
   return &pagetable[PX(0, va)];
 }
 
+#ifdef LAB_PGTBL
+// Like walk(), but also return the level of the PTE returned (0,1,2).
+// If a leaf PTE is encountered at a higher level, return it and set *plevel.
+pte_t *
+walk_level(pagetable_t pagetable, uint64 va, int alloc, int *plevel)
+{
+  if(va >= MAXVA)
+    panic("walk_level");
+
+  for(int level = 2; level >= 0; level--) {
+    pte_t *pte = &pagetable[PX(level, va)];
+    if(*pte & PTE_V) {
+      if(level > 0 && PTE_LEAF(*pte)){
+        *plevel = level;
+        return pte;
+      }
+      if(level == 0){
+        *plevel = 0;
+        return pte;
+      }
+      pagetable = (pagetable_t)PTE2PA(*pte);
+    } else {
+      if(!alloc || (pagetable = (pde_t*)kalloc()) == 0)
+        return 0;
+      memset(pagetable, 0, PGSIZE);
+      *pte = PA2PTE(pagetable) | PTE_V;
+    }
+  }
+  return 0;
+}
+#endif
+
 // Look up a virtual address, return the physical address,
 // or 0 if not mapped.
 // Can only be used to look up user pages.
@@ -187,6 +225,56 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   return 0;
 }
 
+#ifdef LAB_PGTBL
+// Map using SUPERPGSIZE (2MB) pages. va and size MUST be SUPERPGSIZE-aligned.
+int
+mappages_super(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
+{
+  uint64 a, last;
+  pte_t *pte;
+
+  if((va % SUPERPGSIZE) != 0)
+    panic("mappages_super: va not aligned");
+
+  if((size % SUPERPGSIZE) != 0)
+    panic("mappages_super: size not aligned");
+
+  if(size == 0)
+    panic("mappages_super: size");
+
+  a = va;
+  last = va + size - SUPERPGSIZE;
+  for(;;){
+    // Walk down to level 1 (level index 1)
+    pagetable_t pt = pagetable;
+    for(int level = 2; level > 1; level--) {
+      pte_t *p = &pt[PX(level, a)];
+      if(*p & PTE_V) {
+        if(PTE_LEAF(*p))
+          return -1; // remap of existing leaf
+        pt = (pagetable_t)PTE2PA(*p);
+      } else {
+        if((pt = (pagetable_t)kalloc()) == 0)
+          return -1;
+        memset(pt, 0, PGSIZE);
+        *p = PA2PTE(pt) | PTE_V;
+      }
+    }
+
+    pte = &pt[PX(1, a)];
+    if(*pte & PTE_V)
+      panic("mappages_super: remap");
+    *pte = PA2PTE(pa) | perm | PTE_V;
+  // debug: mapping created
+    if(a == last)
+      break;
+    a += SUPERPGSIZE;
+    pa += SUPERPGSIZE;
+  }
+  return 0;
+}
+#endif
+
 // Remove npages of mappings starting from va. va must be
 // page-aligned. The mappings must exist.
 // Optionally free the physical memory.
@@ -202,12 +290,31 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 
   for(a = va; a < va + npages*PGSIZE; a += sz){
     sz = PGSIZE;
+#ifdef LAB_PGTBL
+    int level = 0;
+    if((pte = walk_level(pagetable, a, 0, &level)) == 0)
+      panic("uvmunmap: walk");
+    if((*pte & PTE_V) == 0) {
+      printf("va=%ld pte=%ld\n", a, *pte);
+      panic("uvmunmap: not mapped");
+    }
+    if(level == 1 && PTE_LEAF(*pte) && (a % SUPERPGSIZE) == 0){
+      sz = SUPERPGSIZE;
+      if(do_free){
+        uint64 pa = PTE2PA(*pte);
+        superfree((void*)pa);
+      }
+      *pte = 0;
+      continue;
+    }
+#else
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
     if((*pte & PTE_V) == 0) {
       printf("va=%ld pte=%ld\n", a, *pte);
       panic("uvmunmap: not mapped");
     }
+#endif
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     if(do_free){
@@ -262,6 +369,26 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
 
   oldsz = PGROUNDUP(oldsz);
   for(a = oldsz; a < newsz; a += sz){
+#ifdef LAB_PGTBL
+    // If we can allocate a superpage (2MB) for this region, do so
+  // Avoid mapping a superpage at virtual address 0 (which may hold user init code)
+    if((a % SUPERPGSIZE) == 0 && (newsz - a) >= SUPERPGSIZE && a != 0){
+      sz = SUPERPGSIZE;
+      mem = superalloc();
+      if(mem){
+#ifndef LAB_SYSCALL
+        memset(mem, 0, sz);
+#endif
+        if(mappages_super(pagetable, a, sz, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
+          superfree(mem);
+          uvmdealloc(pagetable, a, oldsz);
+          return 0;
+        }
+        continue;
+      }
+      // if no superpage available, fall back to allocating 4KB pages
+    }
+#endif
     sz = PGSIZE;
     mem = kalloc();
     if(mem == 0){
@@ -345,7 +472,31 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 
   for(i = 0; i < sz; i += szinc){
     szinc = PGSIZE;
-    szinc = PGSIZE;
+#ifdef LAB_PGTBL
+    // detect superpage mapped at level-1 using walk_level
+    {
+      int level = 0;
+      if((pte = walk_level(old, i, 0, &level)) == 0)
+        panic("uvmcopy: pte should exist");
+      if((*pte & PTE_V) == 0)
+        panic("uvmcopy: page not present");
+      if(level == 1 && (i % SUPERPGSIZE) == 0){
+        // copy whole superpage
+        szinc = SUPERPGSIZE;
+        pa = PTE2PA(*pte);
+        flags = PTE_FLAGS(*pte);
+        if((mem = superalloc()) == 0)
+          goto err;
+        memmove(mem, (char*)pa, SUPERPGSIZE);
+  // copied superpage into child's memory
+        if(mappages_super(new, i, SUPERPGSIZE, (uint64)mem, flags) != 0){
+          superfree(mem);
+          goto err;
+        }
+        continue;
+      }
+    }
+#endif
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
@@ -488,9 +639,37 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 
 
 #ifdef LAB_PGTBL
+// 递归打印页表的辅助函数
+void
+vmprint_rec(pagetable_t pagetable, int level, uint64 va_base) {
+  // 遍历页表中的所有条目
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if(pte & PTE_V) {
+      // 计算当前条目对应的虚拟地址
+      uint64 va = va_base + ((uint64)i << PXSHIFT(level));
+      
+      // 打印缩进（每级一个 " .." 前缀）
+      for(int j = 0; j < 3 - level; j++) {
+        printf(" ..");
+      }
+
+  // 打印虚拟地址、PTE值和物理地址，使用 %p 由内核 printf 打印为 0x followed by 16 hex digits
+  printf("%p: pte %p pa %p\n", (void*)(unsigned long)va, (void*)(unsigned long)pte, (void*)(unsigned long)PTE2PA(pte));
+      
+      // 如果不是叶子节点，递归打印下一级
+      if(level > 0 && (pte & (PTE_R|PTE_W|PTE_X)) == 0) {
+        uint64 child = PTE2PA(pte);
+        vmprint_rec((pagetable_t)child, level - 1, va);
+      }
+    }
+  }
+}
+
 void
 vmprint(pagetable_t pagetable) {
-  // your code here
+  printf("page table %p\n", pagetable);
+  vmprint_rec(pagetable, 2, 0);
 }
 #endif
 
