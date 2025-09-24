@@ -176,3 +176,50 @@ printfinit(void)
   initlock(&pr.lock, "pr");
   pr.locking = 1;
 }
+
+// Print a kernel backtrace by following the frame pointer chain (s0).
+// Frame layout used by xv6 functions' prologue/epilogue:
+//   at fp-8 : saved ra
+//   at fp-16: saved old fp (previous s0)
+// We read s0, then walk frames until fp == 0.
+void
+backtrace(void)
+{
+  uint64 fp;
+
+  // read frame pointer (s0)
+  asm volatile("mv %0, s0" : "=r"(fp));
+
+  printf("backtrace:\n");
+
+  // Try to bound the backtrace to this process' kernel stack to avoid
+  // dereferencing arbitrary memory if the frame chain is corrupt.
+  struct proc *p = myproc();
+  if(!p){
+    // No current process; avoid walking frames.
+    printptr(fp);
+    consputc('\n');
+    return;
+  }
+
+  uint64 stacklow = p->kstack;
+  uint64 stackhigh = stacklow + PGSIZE; // kernel stack is one page
+
+  int depth = 0;
+  const int maxdepth = 64;
+  while(fp && depth < maxdepth){
+    // ensure we won't read outside the kernel stack
+    if(fp < stacklow + 16 || fp >= stackhigh) // need at least space for saved ra/old fp
+      break;
+
+    uint64 ra = *(uint64*)(fp - 8);
+    printptr(ra);
+    consputc('\n');
+
+    uint64 next = *(uint64*)(fp - 16);
+    if(next == 0 || next == fp)
+      break;
+    fp = next;
+    depth++;
+  }
+}

@@ -1,0 +1,111 @@
+a0 等寄存器会保存调用时函数的参数
+
+在 call.asm 中
+
+main 函数为
+
+0000000000000024 <main>:
+
+void main(void) {
+  24:	1141                	addi	sp,sp,-16
+  26:	e406                	sd	ra,8(sp)
+  28:	e022                	sd	s0,0(sp)
+  2a:	0800                	addi	s0,sp,16
+  printf("%d %d\n", f(8)+1, 13);
+  2c:	4635                	li	a2,13
+  2e:	45b1                	li	a1,12
+  30:	00001517          	auipc	a0,0x1
+  34:	88050513          	addi	a0,a0,-1920 # 8b0 <malloc+0xfa>
+  38:	6c6000ef          	jal	6fe <printf>
+  exit(0);
+  3c:	4501                	li	a0,0
+  3e:	290000ef          	jal	2ce <exit>
+
+
+> 函数 f & g 被内联了
+
+0000000000000000 <g>:
+#include "kernel/param.h"
+#include "kernel/types.h"
+#include "kernel/stat.h"
+#include "user/user.h"
+
+int g(int x) {
+   0:	1141                	addi	sp,sp,-16
+   2:	e406                	sd	ra,8(sp)
+   4:	e022                	sd	s0,0(sp)
+   6:	0800                	addi	s0,sp,16
+  return x+3;
+}
+   8:	250d                	addiw	a0,a0,3
+   a:	60a2                	ld	ra,8(sp)
+   c:	6402                	ld	s0,0(sp)
+   e:	0141                	addi	sp,sp,16
+  10:	8082                	ret
+0000000000000012 <f>:
+
+int f(int x) {
+  12:	1141                	addi	sp,sp,-16
+  14:	e406                	sd	ra,8(sp)
+  16:	e022                	sd	s0,0(sp)
+  18:	0800                	addi	s0,sp,16
+  return g(x);
+}
+  1a:	250d                	addiw	a0,a0,3
+  1c:	60a2                	ld	ra,8(sp)
+  1e:	6402                	ld	s0,0(sp)
+  20:	0141                	addi	sp,sp,16
+  22:	8082                	ret
+
+> printf 位于 6fe
+  38:	6c6000ef          	jal	6fe <printf>
+
+下面有
+
+00000000000006fe <printf>:
+
+void
+printf(const char *fmt, ...)
+{
+ 6fe:	711d                	addi	sp,sp,-96
+ 700:	ec06                	sd	ra,24(sp)
+ 702:	e822                	sd	s0,16(sp)
+ 704:	1000                	addi	s0,sp,32
+ 706:	e40c                	sd	a1,8(s0)
+ 708:	e810                	sd	a2,16(s0)
+ 70a:	ec14                	sd	a3,24(s0)
+ 70c:	f018                	sd	a4,32(s0)
+ 70e:	f41c                	sd	a5,40(s0)
+ 710:	03043823          	sd	a6,48(s0)
+ 714:	03143c23          	sd	a7,56(s0)
+  va_list ap;
+
+  va_start(ap, fmt);
+ 718:	00840613          	addi	a2,s0,8
+ 71c:	fec43423          	sd	a2,-24(s0)
+  vprintf(1, fmt, ap);
+ 720:	85aa                	mv	a1,a0
+ 722:	4505                	li	a0,1
+ 724:	d0dff0ef          	jal	430 <vprintf>
+}
+ 728:	60e2                	ld	ra,24(sp)
+ 72a:	6442                	ld	s0,16(sp)
+ 72c:	6125                	addi	sp,sp,96
+ 72e:	8082                	ret
+
+
+```
+unsigned int i = 0x00646c72;
+printf("H%x Wo%s", 57616, (char *) &i);
+```
+打印结果为 HE110 World
+57616 的 16 进制为 E110
+0x00646c72 的 ASCII 码为 World
+0x64 ：D
+0x6c ：l
+0x72 ：r
+
+```
+printf("x=%d y=%d", 3);
+```
+会报错（因为需要两个参数，但是只传递了一个）
