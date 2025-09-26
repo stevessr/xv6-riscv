@@ -146,6 +146,12 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
+  // initialize alarm fields
+  p->alarminterval = 0;
+  p->alarmticks = 0;
+  p->alarmhandler = 0;
+  p->handlingalarm = 0;
+
   return p;
 }
 
@@ -167,6 +173,10 @@ freeproc(struct proc *p)
   p->name[0] = 0;
   p->chan = 0;
   p->killed = 0;
+  p->alarminterval = 0;
+  p->alarmticks = 0;
+  p->alarmhandler = 0;
+  p->handlingalarm = 0;
   p->xstate = 0;
   p->state = UNUSED;
 }
@@ -298,6 +308,12 @@ fork(void)
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
+
+  // copy alarm state
+  np->alarminterval = p->alarminterval;
+  np->alarmticks = p->alarmticks;
+  np->alarmhandler = p->alarmhandler;
+  np->handlingalarm = 0; // child not currently running handler
 
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;

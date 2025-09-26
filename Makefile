@@ -195,7 +195,8 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 	$U/_demo\
-
+	$U/_alarmtest\
+	$U/_bttest\
 
 
 
