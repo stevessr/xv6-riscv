@@ -3,8 +3,20 @@
 #include "memlayout.h"
 #include "elf.h"
 #include "riscv.h"
+#include "spinlock.h"
 #include "defs.h"
-#include "fs.h"
+
+// reference count for physical pages (indexed by physical page number)
+// We allocate enough space for all possible physical pages
+#define NPHYSPAGES ((PHYSTOP - KERNBASE) / PGSIZE)
+uint refcount[NPHYSPAGES];
+
+// lock to protect refcount array in SMP
+struct spinlock ref_lock;
+
+// forward declarations
+void increfpa(uint64 pa);
+void decrefpa(uint64 pa);
 
 /*
  * the kernel's page table.
@@ -54,6 +66,7 @@ void
 kvminit(void)
 {
   kernel_pagetable = kvmmake();
+  initlock(&ref_lock, "refcount");
 }
 
 // Switch h/w page table register to the kernel's page table,
@@ -85,8 +98,11 @@ kvminithart()
 pte_t *
 walk(pagetable_t pagetable, uint64 va, int alloc)
 {
-  if(va >= MAXVA)
+  if(va >= MAXVA){
+    // print the offending virtual address to help debug MAXVA-related panics
+    printf("walk: va 0x%lx >= MAXVA 0x%lx\n", va, (uint64)MAXVA);
     panic("walk");
+  }
 
   for(int level = 2; level > 0; level--) {
     pte_t *pte = &pagetable[PX(level, va)];
@@ -192,7 +208,8 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       panic("uvmunmap: not a leaf");
     if(do_free){
       uint64 pa = PTE2PA(*pte);
-      kfree((void*)pa);
+      // decrement reference count and free physical page if needed
+      decrefpa(pa);
     }
     *pte = 0;
   }
@@ -224,6 +241,8 @@ uvmfirst(pagetable_t pagetable, uchar *src, uint sz)
   mem = kalloc();
   memset(mem, 0, PGSIZE);
   mappages(pagetable, 0, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
+  // track refcount for this newly allocated page
+  increfpa((uint64)mem);
   memmove(mem, src, sz);
 }
 
@@ -251,6 +270,8 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
       uvmdealloc(pagetable, a, oldsz);
       return 0;
     }
+    // track refcount for this newly allocated page
+    increfpa((uint64)mem);
   }
   return newsz;
 }
@@ -303,6 +324,45 @@ uvmfree(pagetable_t pagetable, uint64 sz)
   freewalk(pagetable);
 }
 
+// increment refcount for a physical page
+void
+increfpa(uint64 pa)
+{
+  if(pa >= PHYSTOP || pa < KERNBASE)
+    return;
+  uint64 idx = (pa - KERNBASE) / PGSIZE;
+  if(idx >= NPHYSPAGES)
+    panic("increfpa: out of range");
+  acquire(&ref_lock);
+  refcount[idx]++;
+  release(&ref_lock);
+}
+
+// decrement refcount for a physical page and free when reaches 0
+void
+decrefpa(uint64 pa)
+{
+  if(pa >= PHYSTOP || pa < KERNBASE)
+    return;
+  uint64 idx = (pa - KERNBASE) / PGSIZE;
+  if(idx >= NPHYSPAGES)
+    panic("decrefpa: out of range");
+  acquire(&ref_lock);
+  if(refcount[idx] > 0){
+    refcount[idx]--;
+    int needfree = 0;
+    if(refcount[idx] == 0)
+      needfree = 1;
+    release(&ref_lock);
+    if(needfree)
+      kfree((void*)pa);
+  } else {
+    // if was never tracked, free directly
+    release(&ref_lock);
+    kfree((void*)pa);
+  }
+}
+
 // Given a parent process's page table, copy
 // its memory into a child's page table.
 // Copies both the page table and the
@@ -316,7 +376,8 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   uint64 pa, i;
   uint flags;
   char *mem;
-
+  
+  // Implement copy-on-write: share pages between parent and child.
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
@@ -324,17 +385,40 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
-      goto err;
+
+    // If page is already COW, or is writable user page, share it (COW).
+    if((flags & PTE_COW) || ((flags & PTE_W) && (flags & PTE_U))){
+      // clear write permission and mark as COW
+      uint newflags = (flags & ~PTE_W) | PTE_COW;
+
+      if(mappages(new, i, PGSIZE, pa, newflags) != 0){
+        goto err;
+      }
+
+      // update parent's pte to be read-only COW as well (idempotent if already COW)
+      *pte = PA2PTE(pa) | newflags;
+
+      // increment reference count for the shared physical page
+      increfpa(pa);
+    } else {
+      // For read-only or non-user pages, just copy them normally
+      if((mem = kalloc()) == 0)
+        goto err;
+      memmove(mem, (char*)pa, PGSIZE);
+      if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
+        kfree(mem);
+        goto err;
+      }
+      increfpa((uint64)mem);
     }
   }
   return 0;
 
  err:
+  // on error, unmap and decrement refcounts / free where appropriate
+  // uvmunmap with do_free=1 will call kfree, but for shared pages
+  // we need to decref explicitly. For simplicity, unmap without free
+  // and then free what we allocated
   uvmunmap(new, 0, i / PGSIZE, 1);
   return -1;
 }
@@ -360,16 +444,37 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
   pte_t *pte;
+  uint flags;
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
     if(va0 >= MAXVA)
       return -1;
     pte = walk(pagetable, va0, 0);
-    if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0 ||
-       (*pte & PTE_W) == 0)
+    if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0)
       return -1;
+    
     pa0 = PTE2PA(*pte);
+    flags = PTE_FLAGS(*pte);
+    
+    // Handle COW pages: check PTE_COW flag
+    if((flags & PTE_COW) && (flags & PTE_W) == 0){
+      // This is a COW page, need to allocate new page
+      char *mem = kalloc();
+      if(mem == 0)
+        return -1;
+      memmove(mem, (char*)pa0, PGSIZE);
+      decrefpa(pa0);
+      increfpa((uint64)mem);
+      // Remove COW flag and add write permission
+      flags = (flags & ~PTE_COW) | PTE_W;
+      *pte = PA2PTE((uint64)mem) | flags;
+      pa0 = (uint64)mem;
+    } else if((flags & PTE_W) == 0){
+      // Not COW but not writable either, error
+      return -1;
+    }
+    
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
