@@ -119,13 +119,13 @@ usertrap(void)
                 // Remove COW flag and add write permission back
                 flags = (flags & ~PTE_COW) | PTE_W;
                 *pte = PA2PTE((uint64)mem) | flags;
-                sfence_vma();
+                sfence_vma_addr(va0);
               }
             } else if(cnt == 1){
               // Only one reference, just make writable
               flags = (flags & ~PTE_COW) | PTE_W;
               *pte = PA2PTE(pa) | flags;
-              sfence_vma();
+              sfence_vma_addr(va0);
             } else {
               // shouldn't happen
               printf("usertrap(): COW page with refcount error\n");

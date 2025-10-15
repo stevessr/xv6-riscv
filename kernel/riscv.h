@@ -346,6 +346,14 @@ sfence_vma()
   asm volatile("sfence.vma zero, zero");
 }
 
+// precise TLB flush for a specific virtual address (rs1 = virtual address, rs2 = zero)
+static inline void
+sfence_vma_addr(uint64 va)
+{
+  // flush entries for the given virtual address
+  asm volatile("sfence.vma %0, zero" : : "r" (va));
+}
+
 typedef uint64 pte_t;
 typedef uint64 *pagetable_t; // 512 PTEs
 
